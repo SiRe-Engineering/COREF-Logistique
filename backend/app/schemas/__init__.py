@@ -1,4 +1,9 @@
 from app.schemas.article import ArticleCreate, ArticleRead, ArticleUpdate
+from app.schemas.emplacement import (
+    EmplacementCreate,
+    EmplacementRead,
+    EmplacementUpdate,
+)
 from app.schemas.famille import (
     FamilleCreate,
     FamilleRead,
@@ -12,6 +17,9 @@ __all__ = [
     "ArticleCreate",
     "ArticleRead",
     "ArticleUpdate",
+    "EmplacementCreate",
+    "EmplacementRead",
+    "EmplacementUpdate",
     "FamilleCreate",
     "FamilleRead",
     "FamilleUpdate",

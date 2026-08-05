@@ -1,6 +1,18 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  PackagePlus,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
+import { Toast } from "@/components/ui/Toast";
 
 type SousFamille = {
   id: number;
@@ -25,17 +37,12 @@ type Article = {
   unite: string;
   stock_minimum: string;
   actif: boolean;
-  famille_relation: {
-    id: number;
-    code: string;
-    nom: string;
-  } | null;
-  sous_famille_relation: {
-    id: number;
-    code: string;
-    nom: string;
-  } | null;
+  famille_relation: { id: number; code: string; nom: string } | null;
+  sous_famille_relation: { id: number; code: string; nom: string } | null;
 };
+
+type SortKey = "reference" | "designation" | "famille" | "stock_minimum";
+type SortDirection = "asc" | "desc";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -47,22 +54,31 @@ const initialForm = {
   stock_minimum: "0",
 };
 
+function familleTone(nom: string | undefined) {
+  if (nom === "Béton") return "beton" as const;
+  if (nom === "Isolants") return "isolants" as const;
+  return "neutral" as const;
+}
+
 export default function ArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [familles, setFamilles] = useState<Famille[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreFamille, setFiltreFamille] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [articleSelectionne, setArticleSelectionne] = useState<Article | null>(null);
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
-  const [message, setMessage] = useState("");
-  const [erreur, setErreur] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("reference");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
   const [form, setForm] = useState(initialForm);
 
   async function chargerDonnees() {
     setChargement(true);
-    setErreur("");
-
     try {
       const [articlesResponse, famillesResponse] = await Promise.all([
         fetch(`${API_URL}/api/articles`),
@@ -81,7 +97,10 @@ export default function ArticlesPage() {
       setArticles(articlesData);
       setFamilles(famillesData);
     } catch {
-      setErreur("Impossible de charger les données depuis l’API.");
+      setToast({
+        type: "error",
+        message: "Impossible de charger les données depuis l’API.",
+      });
     } finally {
       setChargement(false);
     }
@@ -93,59 +112,81 @@ export default function ArticlesPage() {
 
   const familleSelectionnee = useMemo(
     () =>
-      familles.find(
-        (famille) => famille.id === Number(form.famille_id)
-      ) ?? null,
+      familles.find((famille) => famille.id === Number(form.famille_id)) ?? null,
     [familles, form.famille_id]
   );
 
   const articlesFiltres = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
 
-    return articles.filter((article) => {
+    const filtres = articles.filter((article) => {
       const correspondRecherche =
         !terme ||
         article.reference.toLowerCase().includes(terme) ||
         article.designation.toLowerCase().includes(terme);
 
       const correspondFamille =
-        !filtreFamille ||
-        article.famille_id === Number(filtreFamille);
+        !filtreFamille || article.famille_id === Number(filtreFamille);
 
       return correspondRecherche && correspondFamille;
     });
-  }, [articles, recherche, filtreFamille]);
 
-  function ouvrirCreation() {
-    setForm(initialForm);
-    setMessage("");
-    setErreur("");
-    setModalOuverte(true);
+    return [...filtres].sort((a, b) => {
+      let valeurA: string | number = "";
+      let valeurB: string | number = "";
+
+      if (sortKey === "reference") {
+        valeurA = a.reference;
+        valeurB = b.reference;
+      } else if (sortKey === "designation") {
+        valeurA = a.designation;
+        valeurB = b.designation;
+      } else if (sortKey === "famille") {
+        valeurA = a.famille_relation?.nom ?? "";
+        valeurB = b.famille_relation?.nom ?? "";
+      } else {
+        valeurA = Number(a.stock_minimum);
+        valeurB = Number(b.stock_minimum);
+      }
+
+      const resultat =
+        typeof valeurA === "number" && typeof valeurB === "number"
+          ? valeurA - valeurB
+          : String(valeurA).localeCompare(String(valeurB), "fr");
+
+      return sortDirection === "asc" ? resultat : -resultat;
+    });
+  }, [articles, recherche, filtreFamille, sortKey, sortDirection]);
+
+  function changerTri(cle: SortKey) {
+    if (sortKey === cle) {
+      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(cle);
+      setSortDirection("asc");
+    }
   }
 
-  function fermerCreation() {
-    if (!enregistrement) {
-      setModalOuverte(false);
-    }
+  function SortIcon({ cle }: { cle: SortKey }) {
+    if (sortKey !== cle) return <ArrowUpDown size={14} />;
+    return sortDirection === "asc" ? (
+      <ArrowUp size={14} />
+    ) : (
+      <ArrowDown size={14} />
+    );
   }
 
   async function creerArticle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setEnregistrement(true);
-    setErreur("");
-    setMessage("");
 
     try {
       const response = await fetch(`${API_URL}/api/articles`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           designation: form.designation,
-          famille_id: form.famille_id
-            ? Number(form.famille_id)
-            : null,
+          famille_id: form.famille_id ? Number(form.famille_id) : null,
           sous_famille_id: form.sous_famille_id
             ? Number(form.sous_famille_id)
             : null,
@@ -164,85 +205,75 @@ export default function ArticlesPage() {
       }
 
       const nouvelArticle: Article = await response.json();
-      setArticles((actuels) =>
-        [...actuels, nouvelArticle].sort((a, b) =>
-          a.reference.localeCompare(b.reference)
-        )
-      );
-      setMessage(
-        `Article créé avec la référence ${nouvelArticle.reference}.`
-      );
+      setArticles((actuels) => [...actuels, nouvelArticle]);
       setForm(initialForm);
-
-      window.setTimeout(() => {
-        setModalOuverte(false);
-        setMessage("");
-      }, 1200);
+      setModalOuverte(false);
+      setToast({
+        type: "success",
+        message: `Article ${nouvelArticle.reference} créé.`,
+      });
     } catch (cause) {
-      setErreur(
-        cause instanceof Error
-          ? cause.message
-          : "Une erreur inattendue est survenue."
-      );
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Une erreur inattendue est survenue.",
+      });
     } finally {
       setEnregistrement(false);
     }
   }
 
   async function archiverArticle(article: Article) {
-    const confirmation = window.confirm(
-      `Archiver ${article.reference} — ${article.designation} ?`
-    );
-    if (!confirmation) return;
-
-    setErreur("");
+    if (!window.confirm(`Archiver ${article.reference} ?`)) return;
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/articles/${article.id}`,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        throw new Error("Archivage impossible.");
-      }
+      const response = await fetch(`${API_URL}/api/articles/${article.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Archivage impossible.");
 
       setArticles((actuels) =>
         actuels.filter((element) => element.id !== article.id)
       );
+      setArticleSelectionne(null);
+      setToast({
+        type: "success",
+        message: `${article.reference} a été archivé.`,
+      });
     } catch (cause) {
-      setErreur(
-        cause instanceof Error
-          ? cause.message
-          : "Une erreur inattendue est survenue."
-      );
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Une erreur inattendue est survenue.",
+      });
     }
   }
 
   return (
     <div>
+      <div className="breadcrumb">Référentiel / Articles</div>
+
       <div className="page-heading page-heading-actions">
         <div>
           <span className="eyebrow">Référentiel</span>
           <h1>Articles</h1>
-          <p>
-            Gérez les références internes, leurs familles et leurs paramètres
-            logistiques.
-          </p>
+          <p>Gérez les références internes et leurs paramètres logistiques.</p>
         </div>
 
-        <button className="primary-button" onClick={ouvrirCreation}>
-          <span>＋</span>
+        <Button variant="secondary" onClick={() => setModalOuverte(true)}>
+          <PackagePlus size={18} />
           Nouvel article
-        </button>
+        </Button>
       </div>
-
-      {erreur && <div className="alert alert-error">{erreur}</div>}
 
       <section className="content-card">
         <div className="filters-row">
           <label className="search-field">
-            <span>⌕</span>
+            <Search size={17} />
             <input
               type="search"
               placeholder="Rechercher une référence ou une désignation"
@@ -254,7 +285,6 @@ export default function ArticlesPage() {
           <select
             value={filtreFamille}
             onChange={(event) => setFiltreFamille(event.target.value)}
-            aria-label="Filtrer par famille"
           >
             <option value="">Toutes les familles</option>
             {familles.map((famille) => (
@@ -274,20 +304,35 @@ export default function ArticlesPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Référence</th>
-                <th>Désignation</th>
-                <th>Famille</th>
+                <th>
+                  <button className="sort-button" onClick={() => changerTri("reference")}>
+                    Référence <SortIcon cle="reference" />
+                  </button>
+                </th>
+                <th>
+                  <button className="sort-button" onClick={() => changerTri("designation")}>
+                    Désignation <SortIcon cle="designation" />
+                  </button>
+                </th>
+                <th>
+                  <button className="sort-button" onClick={() => changerTri("famille")}>
+                    Famille <SortIcon cle="famille" />
+                  </button>
+                </th>
                 <th>Sous-famille</th>
                 <th>Unité</th>
-                <th>Stock mini</th>
+                <th>
+                  <button className="sort-button" onClick={() => changerTri("stock_minimum")}>
+                    Stock mini <SortIcon cle="stock_minimum" />
+                  </button>
+                </th>
                 <th>Statut</th>
-                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {chargement && (
                 <tr>
-                  <td colSpan={8} className="empty-state">
+                  <td colSpan={7} className="empty-state">
                     Chargement des articles…
                   </td>
                 </tr>
@@ -295,41 +340,36 @@ export default function ArticlesPage() {
 
               {!chargement &&
                 articlesFiltres.map((article) => (
-                  <tr key={article.id}>
+                  <tr
+                    key={article.id}
+                    className="clickable-row"
+                    onClick={() => setArticleSelectionne(article)}
+                  >
                     <td>
-                      <span className="reference-chip">
-                        {article.reference}
-                      </span>
+                      <span className="reference-chip">{article.reference}</span>
                     </td>
+                    <td><strong>{article.designation}</strong></td>
                     <td>
-                      <strong>{article.designation}</strong>
+                      {article.famille_relation ? (
+                        <Badge tone={familleTone(article.famille_relation.nom)}>
+                          {article.famille_relation.nom}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
                     </td>
-                    <td>{article.famille_relation?.nom ?? "—"}</td>
                     <td>{article.sous_famille_relation?.nom ?? "—"}</td>
                     <td>{article.unite}</td>
                     <td>{Number(article.stock_minimum).toLocaleString("fr-FR")}</td>
-                    <td>
-                      <span className="status-pill status-active">Actif</span>
-                    </td>
-                    <td className="table-actions">
-                      <button
-                        className="icon-button danger-button"
-                        title="Archiver l’article"
-                        onClick={() => archiverArticle(article)}
-                      >
-                        ×
-                      </button>
-                    </td>
+                    <td><Badge tone="success">Actif</Badge></td>
                   </tr>
                 ))}
 
               {!chargement && articlesFiltres.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-state">
+                  <td colSpan={7} className="empty-state">
                     <strong>Aucun article trouvé</strong>
-                    <span>
-                      Modifiez les filtres ou créez une nouvelle référence.
-                    </span>
+                    <span>Modifiez les filtres ou créez une référence.</span>
                   </td>
                 </tr>
               )}
@@ -338,30 +378,64 @@ export default function ArticlesPage() {
         </div>
       </section>
 
+      <Drawer
+        open={articleSelectionne !== null}
+        title={articleSelectionne?.reference ?? ""}
+        onClose={() => setArticleSelectionne(null)}
+      >
+        {articleSelectionne && (
+          <div className="article-detail">
+            <div className="article-detail-title">
+              <h3>{articleSelectionne.designation}</h3>
+              <Badge tone="success">Actif</Badge>
+            </div>
+
+            <dl className="detail-grid">
+              <div><dt>Famille</dt><dd>{articleSelectionne.famille_relation?.nom ?? "—"}</dd></div>
+              <div><dt>Sous-famille</dt><dd>{articleSelectionne.sous_famille_relation?.nom ?? "—"}</dd></div>
+              <div><dt>Unité</dt><dd>{articleSelectionne.unite}</dd></div>
+              <div><dt>Stock minimum</dt><dd>{articleSelectionne.stock_minimum}</dd></div>
+            </dl>
+
+            <section className="drawer-section">
+              <h4>Stock</h4>
+              <div className="placeholder-panel">
+                Les quantités par emplacement seront disponibles avec le module Stock.
+              </div>
+            </section>
+
+            <section className="drawer-section">
+              <h4>Documents</h4>
+              <div className="placeholder-panel">
+                Aucun document associé pour le moment.
+              </div>
+            </section>
+
+            <div className="drawer-actions">
+              <Button
+                variant="danger"
+                onClick={() => archiverArticle(articleSelectionne)}
+              >
+                <Trash2 size={17} />
+                Archiver l’article
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
+
       {modalOuverte && (
-        <div className="modal-backdrop" onMouseDown={fermerCreation}>
+        <div className="modal-backdrop" onMouseDown={() => setModalOuverte(false)}>
           <section
             className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <div>
                 <span className="eyebrow">Nouvelle référence</span>
-                <h2 id="modal-title">Créer un article</h2>
-                <p>
-                  La référence interne sera attribuée automatiquement.
-                </p>
+                <h2>Créer un article</h2>
+                <p>La référence sera attribuée automatiquement.</p>
               </div>
-              <button
-                className="icon-button"
-                onClick={fermerCreation}
-                aria-label="Fermer"
-              >
-                ×
-              </button>
             </div>
 
             <form onSubmit={creerArticle}>
@@ -376,15 +450,10 @@ export default function ArticlesPage() {
                   <span>Désignation *</span>
                   <input
                     required
-                    maxLength={255}
                     autoFocus
-                    placeholder="Ex. Béton dense 70 % alumine"
                     value={form.designation}
                     onChange={(event) =>
-                      setForm({
-                        ...form,
-                        designation: event.target.value,
-                      })
+                      setForm({ ...form, designation: event.target.value })
                     }
                   />
                 </label>
@@ -416,49 +485,27 @@ export default function ArticlesPage() {
                     value={form.sous_famille_id}
                     disabled={!familleSelectionnee}
                     onChange={(event) =>
-                      setForm({
-                        ...form,
-                        sous_famille_id: event.target.value,
-                      })
+                      setForm({ ...form, sous_famille_id: event.target.value })
                     }
                   >
                     <option value="">Sélectionner</option>
-                    {familleSelectionnee?.sous_familles.map(
-                      (sousFamille) => (
-                        <option
-                          key={sousFamille.id}
-                          value={sousFamille.id}
-                        >
-                          {sousFamille.nom}
-                        </option>
-                      )
-                    )}
+                    {familleSelectionnee?.sous_familles.map((sf) => (
+                      <option key={sf.id} value={sf.id}>{sf.nom}</option>
+                    ))}
                   </select>
                 </label>
 
                 <label className="field">
                   <span>Unité *</span>
                   <select
-                    required
                     value={form.unite}
                     onChange={(event) =>
                       setForm({ ...form, unite: event.target.value })
                     }
                   >
-                    <option value="unité">Unité</option>
-                    <option value="pièce">Pièce</option>
-                    <option value="sac">Sac</option>
-                    <option value="kg">Kilogramme</option>
-                    <option value="tonne">Tonne</option>
-                    <option value="m">Mètre</option>
-                    <option value="m²">Mètre carré</option>
-                    <option value="m³">Mètre cube</option>
-                    <option value="litre">Litre</option>
-                    <option value="rouleau">Rouleau</option>
-                    <option value="boîte">Boîte</option>
-                    <option value="carton">Carton</option>
-                    <option value="palette">Palette</option>
-                    <option value="paquet">Paquet</option>
+                    {["unité","pièce","sac","kg","tonne","m","m²","m³","litre","rouleau","boîte","carton","palette","paquet"].map(
+                      (unite) => <option key={unite} value={unite}>{unite}</option>
+                    )}
                   </select>
                 </label>
 
@@ -470,38 +517,35 @@ export default function ArticlesPage() {
                     step="0.001"
                     value={form.stock_minimum}
                     onChange={(event) =>
-                      setForm({
-                        ...form,
-                        stock_minimum: event.target.value,
-                      })
+                      setForm({ ...form, stock_minimum: event.target.value })
                     }
                   />
                 </label>
               </div>
 
-              {message && <div className="alert alert-success">{message}</div>}
-              {erreur && <div className="alert alert-error">{erreur}</div>}
-
               <div className="modal-actions">
-                <button
+                <Button
                   type="button"
-                  className="secondary-button"
-                  onClick={fermerCreation}
-                  disabled={enregistrement}
+                  variant="ghost"
+                  onClick={() => setModalOuverte(false)}
                 >
                   Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="primary-button"
-                  disabled={enregistrement}
-                >
+                </Button>
+                <Button type="submit" disabled={enregistrement}>
                   {enregistrement ? "Création…" : "Créer l’article"}
-                </button>
+                </Button>
               </div>
             </form>
           </section>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
