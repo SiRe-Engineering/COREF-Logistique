@@ -758,3 +758,104 @@ select, .field input {
     grid-column: auto;
   }
 }
+
+/* ===========================
+   Correctif Emplacements
+   =========================== */
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.location-card {
+  min-height: 180px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.location-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.location-card-header > div:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.location-card-header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-card-header span {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.location-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.location-children {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.location-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border-radius: 7px;
+  background: var(--surface-muted);
+  font-size: 0.82rem;
+}
+
+.location-child span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-child code {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 1050px) {
+  .locations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .locations-grid {
+    grid-template-columns: 1fr;
+  }
+}
