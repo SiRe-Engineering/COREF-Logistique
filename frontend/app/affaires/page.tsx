@@ -5,12 +5,14 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  Pencil,
   Plus,
   Search,
   UserRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
 import styles from "./page.module.css";
 
@@ -33,6 +35,14 @@ type Affaire = {
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+const statuts = [
+  { value: "OUVERTE", label: "Ouverte" },
+  { value: "EN_PREPARATION", label: "En préparation" },
+  { value: "EN_COURS", label: "En cours" },
+  { value: "TERMINEE", label: "Terminée" },
+  { value: "ANNULEE", label: "Annulée" },
+];
+
 const initialForm = {
   code_externe: "",
   nom: "",
@@ -46,27 +56,46 @@ const initialForm = {
   commentaire: "",
 };
 
-const statuts = [
-  { value: "OUVERTE", label: "Ouverte" },
-  { value: "EN_PREPARATION", label: "En préparation" },
-  { value: "EN_COURS", label: "En cours" },
-  { value: "TERMINEE", label: "Terminée" },
-  { value: "ANNULEE", label: "Annulée" },
-];
-
 function statutAffaire(statut: string) {
-  if (statut === "EN_COURS") return { label: "En cours", tone: "success" as const };
-  if (statut === "EN_PREPARATION") return { label: "Préparation", tone: "warning" as const };
-  if (statut === "TERMINEE") return { label: "Terminée", tone: "neutral" as const };
-  if (statut === "ANNULEE") return { label: "Annulée", tone: "beton" as const };
+  if (statut === "EN_COURS") {
+    return { label: "En cours", tone: "success" as const };
+  }
+  if (statut === "EN_PREPARATION") {
+    return { label: "Préparation", tone: "warning" as const };
+  }
+  if (statut === "TERMINEE") {
+    return { label: "Terminée", tone: "neutral" as const };
+  }
+  if (statut === "ANNULEE") {
+    return { label: "Annulée", tone: "beton" as const };
+  }
   return { label: "Ouverte", tone: "isolants" as const };
+}
+
+function versFormulaire(affaire: Affaire) {
+  return {
+    code_externe: affaire.code_externe ?? "",
+    nom: affaire.nom,
+    client: affaire.client ?? "",
+    site: affaire.site ?? "",
+    zone_intervention: affaire.zone_intervention ?? "",
+    charge_affaires: affaire.charge_affaires ?? "",
+    statut: affaire.statut,
+    date_debut: affaire.date_debut ?? "",
+    date_fin_prevue: affaire.date_fin_prevue ?? "",
+    commentaire: affaire.commentaire ?? "",
+  };
 }
 
 export default function AffairesPage() {
   const [affaires, setAffaires] = useState<Affaire[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("");
-  const [modalOuverte, setModalOuverte] = useState(false);
+  const [modalCreationOuverte, setModalCreationOuverte] = useState(false);
+  const [affaireSelectionnee, setAffaireSelectionnee] =
+    useState<Affaire | null>(null);
+  const [modeEdition, setModeEdition] = useState(false);
+  const [enregistrement, setEnregistrement] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [toast, setToast] = useState<{
     message: string;
@@ -110,8 +139,26 @@ export default function AffairesPage() {
     });
   }, [affaires, recherche, filtreStatut]);
 
+  function ouvrirCreation() {
+    setForm(initialForm);
+    setModalCreationOuverte(true);
+  }
+
+  function ouvrirAffaire(affaire: Affaire) {
+    setAffaireSelectionnee(affaire);
+    setForm(versFormulaire(affaire));
+    setModeEdition(false);
+  }
+
+  function fermerDrawer() {
+    setAffaireSelectionnee(null);
+    setModeEdition(false);
+    setForm(initialForm);
+  }
+
   async function creer(event: FormEvent) {
     event.preventDefault();
+    setEnregistrement(true);
 
     try {
       const response = await fetch(`${API_URL}/api/affaires`, {
@@ -142,7 +189,7 @@ export default function AffairesPage() {
 
       const affaire: Affaire = await response.json();
 
-      setModalOuverte(false);
+      setModalCreationOuverte(false);
       setForm(initialForm);
       setToast({
         type: "success",
@@ -157,6 +204,72 @@ export default function AffairesPage() {
             ? cause.message
             : "Création impossible.",
       });
+    } finally {
+      setEnregistrement(false);
+    }
+  }
+
+  async function modifier(event: FormEvent) {
+    event.preventDefault();
+
+    if (!affaireSelectionnee) return;
+
+    setEnregistrement(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/affaires/${affaireSelectionnee.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code_externe: form.code_externe || null,
+            nom: form.nom,
+            client: form.client || null,
+            site: form.site || null,
+            zone_intervention: form.zone_intervention || null,
+            charge_affaires: form.charge_affaires || null,
+            statut: form.statut,
+            date_debut: form.date_debut || null,
+            date_fin_prevue: form.date_fin_prevue || null,
+            commentaire: form.commentaire || null,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null);
+        throw new Error(
+          typeof detail?.detail === "string"
+            ? detail.detail
+            : "Modification impossible."
+        );
+      }
+
+      const affaireModifiee: Affaire = await response.json();
+
+      setAffaires((actuelles) =>
+        actuelles.map((affaire) =>
+          affaire.id === affaireModifiee.id ? affaireModifiee : affaire
+        )
+      );
+      setAffaireSelectionnee(affaireModifiee);
+      setForm(versFormulaire(affaireModifiee));
+      setModeEdition(false);
+      setToast({
+        type: "success",
+        message: `${affaireModifiee.reference} mise à jour.`,
+      });
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Modification impossible.",
+      });
+    } finally {
+      setEnregistrement(false);
     }
   }
 
@@ -173,7 +286,7 @@ export default function AffairesPage() {
           </p>
         </div>
 
-        <Button variant="secondary" onClick={() => setModalOuverte(true)}>
+        <Button variant="secondary" onClick={ouvrirCreation}>
           <Plus size={18} />
           Nouvelle affaire
         </Button>
@@ -184,28 +297,55 @@ export default function AffairesPage() {
           <BriefcaseBusiness size={20} />
           <div>
             <span>Affaires actives</span>
-            <strong>{affaires.filter((a) => !["TERMINEE", "ANNULEE"].includes(a.statut)).length}</strong>
+            <strong>
+              {
+                affaires.filter(
+                  (affaire) =>
+                    !["TERMINEE", "ANNULEE"].includes(affaire.statut)
+                ).length
+              }
+            </strong>
           </div>
         </article>
         <article>
           <Building2 size={20} />
           <div>
             <span>Clients</span>
-            <strong>{new Set(affaires.map((a) => a.client).filter(Boolean)).size}</strong>
+            <strong>
+              {
+                new Set(
+                  affaires.map((affaire) => affaire.client).filter(Boolean)
+                ).size
+              }
+            </strong>
           </div>
         </article>
         <article>
           <UserRound size={20} />
           <div>
             <span>Chargés d’affaires</span>
-            <strong>{new Set(affaires.map((a) => a.charge_affaires).filter(Boolean)).size}</strong>
+            <strong>
+              {
+                new Set(
+                  affaires
+                    .map((affaire) => affaire.charge_affaires)
+                    .filter(Boolean)
+                ).size
+              }
+            </strong>
           </div>
         </article>
         <article>
           <CalendarDays size={20} />
           <div>
             <span>En cours</span>
-            <strong>{affaires.filter((a) => a.statut === "EN_COURS").length}</strong>
+            <strong>
+              {
+                affaires.filter(
+                  (affaire) => affaire.statut === "EN_COURS"
+                ).length
+              }
+            </strong>
           </div>
         </article>
       </section>
@@ -253,7 +393,11 @@ export default function AffairesPage() {
                 const statut = statutAffaire(affaire.statut);
 
                 return (
-                  <tr key={affaire.id}>
+                  <tr
+                    key={affaire.id}
+                    className="clickable-row"
+                    onClick={() => ouvrirAffaire(affaire)}
+                  >
                     <td>
                       <div className={styles.affaireCell}>
                         <span className="reference-chip">
@@ -307,8 +451,241 @@ export default function AffairesPage() {
         </div>
       </section>
 
-      {modalOuverte && (
-        <div className="modal-backdrop" onMouseDown={() => setModalOuverte(false)}>
+      <Drawer
+        open={affaireSelectionnee !== null}
+        title={
+          affaireSelectionnee?.code_externe ||
+          affaireSelectionnee?.reference ||
+          ""
+        }
+        onClose={fermerDrawer}
+      >
+        {affaireSelectionnee && !modeEdition && (
+          <div className={styles.detail}>
+            <div className={styles.detailHeader}>
+              <div>
+                <h3>{affaireSelectionnee.nom}</h3>
+                <p>
+                  {affaireSelectionnee.client ?? "Client non renseigné"}
+                </p>
+              </div>
+              <Badge tone={statutAffaire(affaireSelectionnee.statut).tone}>
+                {statutAffaire(affaireSelectionnee.statut).label}
+              </Badge>
+            </div>
+
+            <dl className="detail-grid">
+              <div>
+                <dt>Site</dt>
+                <dd>{affaireSelectionnee.site ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Zone</dt>
+                <dd>{affaireSelectionnee.zone_intervention ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Chargé d’affaires</dt>
+                <dd>{affaireSelectionnee.charge_affaires ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Référence interne</dt>
+                <dd>{affaireSelectionnee.reference}</dd>
+              </div>
+              <div>
+                <dt>Date de début</dt>
+                <dd>{affaireSelectionnee.date_debut ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Fin prévue</dt>
+                <dd>{affaireSelectionnee.date_fin_prevue ?? "—"}</dd>
+              </div>
+            </dl>
+
+            {affaireSelectionnee.commentaire && (
+              <section className="drawer-section">
+                <h4>Commentaire</h4>
+                <div className="placeholder-panel">
+                  {affaireSelectionnee.commentaire}
+                </div>
+              </section>
+            )}
+
+            <div className="drawer-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setForm(versFormulaire(affaireSelectionnee));
+                  setModeEdition(true);
+                }}
+              >
+                <Pencil size={17} />
+                Modifier l’affaire
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {affaireSelectionnee && modeEdition && (
+          <form onSubmit={modifier}>
+            <div className="form-grid">
+              <label className="field">
+                <span>Code COREF / ERP</span>
+                <input
+                  maxLength={80}
+                  value={form.code_externe}
+                  onChange={(event) =>
+                    setForm({ ...form, code_externe: event.target.value })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Statut *</span>
+                <select
+                  required
+                  value={form.statut}
+                  onChange={(event) =>
+                    setForm({ ...form, statut: event.target.value })
+                  }
+                >
+                  {statuts.map((statut) => (
+                    <option key={statut.value} value={statut.value}>
+                      {statut.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field field-wide">
+                <span>Nom de l’affaire *</span>
+                <input
+                  required
+                  maxLength={200}
+                  value={form.nom}
+                  onChange={(event) =>
+                    setForm({ ...form, nom: event.target.value })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Client</span>
+                <input
+                  maxLength={180}
+                  value={form.client}
+                  onChange={(event) =>
+                    setForm({ ...form, client: event.target.value })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Site</span>
+                <input
+                  maxLength={180}
+                  value={form.site}
+                  onChange={(event) =>
+                    setForm({ ...form, site: event.target.value })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Zone d’intervention</span>
+                <input
+                  maxLength={180}
+                  value={form.zone_intervention}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      zone_intervention: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Chargé d’affaires</span>
+                <input
+                  maxLength={150}
+                  value={form.charge_affaires}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      charge_affaires: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Date de début</span>
+                <input
+                  type="date"
+                  value={form.date_debut}
+                  onChange={(event) =>
+                    setForm({ ...form, date_debut: event.target.value })
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>Date de fin prévue</span>
+                <input
+                  type="date"
+                  value={form.date_fin_prevue}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      date_fin_prevue: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <label className="field field-wide">
+                <span>Commentaire</span>
+                <textarea
+                  className={styles.textarea}
+                  rows={4}
+                  value={form.commentaire}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      commentaire: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="modal-actions">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setForm(versFormulaire(affaireSelectionnee));
+                  setModeEdition(false);
+                }}
+                disabled={enregistrement}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={enregistrement}>
+                {enregistrement
+                  ? "Enregistrement…"
+                  : "Enregistrer les modifications"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Drawer>
+
+      {modalCreationOuverte && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setModalCreationOuverte(false)}
+        >
           <section
             className="modal-card"
             onMouseDown={(event) => event.stopPropagation()}
@@ -332,7 +709,10 @@ export default function AffairesPage() {
                     placeholder="Ex. A26-145"
                     value={form.code_externe}
                     onChange={(event) =>
-                      setForm({ ...form, code_externe: event.target.value })
+                      setForm({
+                        ...form,
+                        code_externe: event.target.value,
+                      })
                     }
                   />
                 </label>
@@ -359,7 +739,6 @@ export default function AffairesPage() {
                   <input
                     required
                     maxLength={200}
-                    placeholder="Ex. Réfection chaudière — Tranche 2"
                     value={form.nom}
                     onChange={(event) =>
                       setForm({ ...form, nom: event.target.value })
@@ -393,7 +772,6 @@ export default function AffairesPage() {
                   <span>Zone d’intervention</span>
                   <input
                     maxLength={180}
-                    placeholder="Ex. Chaudière, poche, four..."
                     value={form.zone_intervention}
                     onChange={(event) =>
                       setForm({
@@ -424,7 +802,10 @@ export default function AffairesPage() {
                     type="date"
                     value={form.date_debut}
                     onChange={(event) =>
-                      setForm({ ...form, date_debut: event.target.value })
+                      setForm({
+                        ...form,
+                        date_debut: event.target.value,
+                      })
                     }
                   />
                 </label>
@@ -448,11 +829,14 @@ export default function AffairesPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setModalOuverte(false)}
+                  onClick={() => setModalCreationOuverte(false)}
+                  disabled={enregistrement}
                 >
                   Annuler
                 </Button>
-                <Button type="submit">Créer l’affaire</Button>
+                <Button type="submit" disabled={enregistrement}>
+                  {enregistrement ? "Création…" : "Créer l’affaire"}
+                </Button>
               </div>
             </form>
           </section>
