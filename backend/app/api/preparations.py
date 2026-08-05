@@ -251,15 +251,26 @@ def modifier_ligne(
     if ligne is None:
         raise HTTPException(status_code=404, detail="Ligne introuvable.")
 
-    # Libération avant changement de lot ou d’emplacement.
+    donnees = payload.model_dump(exclude_unset=True)
+
+    # Une saisie de quantité préparée ne modifie pas le besoin réservé.
+    champs_reservation = {
+        "lot_id",
+        "emplacement_source_id",
+        "quantite_demandee",
+    }
+    reservation_a_recalculer = bool(
+        champs_reservation.intersection(donnees)
+    )
     reservation_active = preparation.statut in {
         "VALIDEE",
         "EN_PREPARATION",
     }
-    if reservation_active:
+
+    if reservation_active and reservation_a_recalculer:
         liberer_reservation_ligne(db, ligne)
 
-    for champ, valeur in payload.model_dump(exclude_unset=True).items():
+    for champ, valeur in donnees.items():
         setattr(ligne, champ, valeur)
 
     if ligne.lot_id is not None:
@@ -270,7 +281,7 @@ def modifier_ligne(
                 detail="Le lot ne correspond pas à l’article.",
             )
 
-    if reservation_active:
+    if reservation_active and reservation_a_recalculer:
         synchroniser_reservation_ligne(db, preparation, ligne)
 
     notifier_acteurs(
@@ -317,6 +328,63 @@ def supprimer_ligne(
     )
     db.commit()
     return charger_preparation(db, preparation_id)
+
+
+@router.delete("/{preparation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def supprimer_preparation(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    preparation = charger_preparation(db, preparation_id)
+
+    if preparation.statut == "EXPEDIEE":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Une préparation expédiée ne peut pas être supprimée. "
+                "Son historique doit être conservé."
+            ),
+        )
+
+    reference = preparation.reference
+    demandeur = preparation.demandeur
+    preparateur = preparation.preparateur
+
+    try:
+        liberer_reservations_preparation(db, preparation)
+
+        creer_notification(
+            db,
+            demandeur,
+            "Préparation supprimée",
+            f"{reference} a été supprimée et ses réservations ont été libérées.",
+            "/preparations",
+            "INFORMATION",
+        )
+
+        if (
+            preparateur
+            and preparateur.strip().lower()
+            != (demandeur or "").strip().lower()
+        ):
+            creer_notification(
+                db,
+                preparateur,
+                "Préparation supprimée",
+                f"{reference} a été supprimée et ses réservations ont été libérées.",
+                "/preparations",
+                "INFORMATION",
+            )
+
+        db.delete(preparation)
+        db.commit()
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/{preparation_id}/valider", response_model=PreparationRead)
