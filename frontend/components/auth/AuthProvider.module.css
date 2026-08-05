@@ -1,0 +1,77 @@
+.loading,
+.loginPage {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #f2f4f7;
+}
+
+.loginCard {
+  display: grid;
+  width: min(420px, calc(100vw - 32px));
+  gap: 22px;
+  padding: 32px;
+  border: 1px solid #d0d5dd;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 20px 50px rgba(16, 24, 40, .12);
+}
+
+.logo {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 12px;
+  background: #c7271a;
+  color: white;
+  font-weight: 800;
+}
+
+.loginCard h1 {
+  margin: 4px 0 8px;
+}
+
+.loginCard p,
+.loginCard small {
+  color: #667085;
+}
+
+.loginCard form,
+.loginCard label {
+  display: grid;
+  gap: 8px;
+}
+
+.loginCard form {
+  gap: 16px;
+}
+
+.loginCard label span {
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.loginCard input {
+  padding: 11px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.loginCard button {
+  padding: 11px 14px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  background: #c7271a;
+  color: white;
+  font-weight: 750;
+}
+
+.error {
+  padding: 10px;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: .82rem;
+}

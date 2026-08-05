@@ -5,7 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.reservation import Notification, ReservationStock
+from app.models.utilisateur import Utilisateur
 from app.schemas.reservation import NotificationRead, ReservationRead
 
 router_reservations = APIRouter(
@@ -57,16 +59,18 @@ def lister_reservations(
     return list(db.scalars(requete).unique().all())
 
 
-@router_notifications.get("", response_model=list[NotificationRead])
-def lister_notifications(
-    destinataire: str = Query(min_length=1, max_length=120),
+@router_notifications.get("/me", response_model=list[NotificationRead])
+def mes_notifications(
     non_lues_uniquement: bool = False,
     db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
 ) -> list[Notification]:
     requete = (
         select(Notification)
         .where(
-            Notification.destinataire.ilike(destinataire.strip())
+            Notification.destinataire.ilike(
+                utilisateur.nom_complet.strip()
+            )
         )
         .order_by(Notification.date_creation.desc())
         .limit(100)
@@ -85,12 +89,22 @@ def lister_notifications(
 def marquer_lue(
     notification_id: int,
     db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
 ) -> Notification:
     notification = db.get(Notification, notification_id)
     if notification is None:
         raise HTTPException(
             status_code=404,
             detail="Notification introuvable.",
+        )
+
+    if (
+        notification.destinataire.strip().lower()
+        != utilisateur.nom_complet.strip().lower()
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Cette notification ne vous appartient pas.",
         )
 
     notification.lue = True

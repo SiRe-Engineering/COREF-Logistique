@@ -16,28 +16,40 @@ import {
   Settings,
   Shapes,
   Truck,
+  Users,
   Warehouse,
 } from "lucide-react";
-
-const navigation = [
-  { href: "/", label: "Tableau de bord", icon: Gauge },
-  { href: "/articles", label: "Articles", icon: PackageSearch },
-  { href: "#", label: "Familles", icon: Shapes, disabled: true },
-  { href: "/stocks", label: "Stocks", icon: Warehouse },
-  { href: "/mouvements", label: "Mouvements", icon: Boxes },
-  { href: "/inventaires", label: "Inventaires", icon: ClipboardCheck },
-  { href: "/preparations", label: "Préparations", icon: PackageCheck },
-  { href: "/affaires", label: "Affaires", icon: BriefcaseBusiness },
-  { href: "/lots-beton", label: "Lots béton", icon: FlaskConical },
-  { href: "/materiels", label: "Matériels", icon: Hammer },
-  { href: "#", label: "Moules", icon: Construction, disabled: true },
-  { href: "#", label: "Véhicules", icon: Truck, disabled: true },
-  { href: "/emplacements", label: "Emplacements", icon: MapPin },
-  { href: "#", label: "Administration", icon: Settings, disabled: true },
-];
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { utilisateur } = useAuth();
+
+  const navigation = [
+    { href: "/", label: "Tableau de bord", icon: Gauge },
+    { href: "/articles", label: "Articles", icon: PackageSearch },
+    { href: "#", label: "Familles", icon: Shapes, disabled: true },
+    { href: "/stocks", label: "Stocks", icon: Warehouse },
+    { href: "/mouvements", label: "Mouvements", icon: Boxes },
+    { href: "/inventaires", label: "Inventaires", icon: ClipboardCheck },
+    { href: "/preparations", label: "Préparations", icon: PackageCheck },
+    { href: "/affaires", label: "Affaires", icon: BriefcaseBusiness },
+    { href: "/lots-beton", label: "Lots béton", icon: FlaskConical },
+    { href: "/materiels", label: "Matériels", icon: Hammer },
+    { href: "#", label: "Moules", icon: Construction, disabled: true },
+    { href: "#", label: "Véhicules", icon: Truck, disabled: true },
+    { href: "/emplacements", label: "Emplacements", icon: MapPin },
+    ...(utilisateur.role === "ADMINISTRATEUR"
+      ? [
+          {
+            href: "/administration/utilisateurs",
+            label: "Utilisateurs",
+            icon: Users,
+          },
+        ]
+      : []),
+    { href: "#", label: "Administration", icon: Settings, disabled: true },
+  ];
 
   return (
     <aside className="sidebar">
@@ -82,7 +94,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <span className="system-dot" />
-        Environnement local
+        Session sécurisée
       </div>
     </aside>
   );

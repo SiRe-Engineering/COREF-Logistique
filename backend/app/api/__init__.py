@@ -1,5 +1,6 @@
 from app.api.affaires import router as affaires_router
 from app.api.articles import router as articles_router
+from app.api.auth import router as auth_router
 from app.api.emplacements import router as emplacements_router
 from app.api.familles import router as familles_router
 from app.api.health import router as health_router
@@ -13,10 +14,12 @@ from app.api.reservations import (
     router_reservations,
 )
 from app.api.stocks import router as stocks_router
+from app.api.utilisateurs import router as utilisateurs_router
 
 __all__ = [
     "affaires_router",
     "articles_router",
+    "auth_router",
     "emplacements_router",
     "familles_router",
     "health_router",
@@ -28,4 +31,5 @@ __all__ = [
     "router_notifications",
     "router_reservations",
     "stocks_router",
+    "utilisateurs_router",
 ]

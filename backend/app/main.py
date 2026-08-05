@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     affaires_router,
     articles_router,
+    auth_router,
     emplacements_router,
     familles_router,
     health_router,
@@ -15,6 +16,7 @@ from app.api import (
     router_notifications,
     router_reservations,
     stocks_router,
+    utilisateurs_router,
 )
 from app.core.config import settings
 
@@ -32,6 +34,8 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(utilisateurs_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
 app.include_router(stocks_router)

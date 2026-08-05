@@ -1,0 +1,41 @@
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.menu > div:nth-child(2) {
+  display: grid;
+}
+
+.menu strong {
+  font-size: .78rem;
+}
+
+.menu span {
+  color: #667085;
+  font-size: .67rem;
+}
+
+.avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: .76rem;
+  font-weight: 800;
+}
+
+.menu button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: white;
+}
