@@ -1,0 +1,62 @@
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.actions button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+}
+
+.actions button:hover {
+  background: var(--surface-muted);
+}
+
+.actions .deleteButton {
+  color: #b42318;
+}
+
+.actions .deleteButton:hover {
+  border-color: #fda29b;
+  background: #fef3f2;
+}
+
+.activeStatus,
+.inactiveStatus {
+  display: inline-flex;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.activeStatus {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.inactiveStatus {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.inactiveRow {
+  opacity: .62;
+}
+
+.error {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: .82rem;
+}

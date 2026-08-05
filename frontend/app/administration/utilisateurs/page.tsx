@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Plus, Users } from "lucide-react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { entetesAuthentifiees } from "@/lib/auth";
+import styles from "./page.module.css";
 
 type Utilisateur = {
   id: number;
@@ -31,22 +32,46 @@ const rolesMetier = [
   "CONSULTATION",
 ];
 
+const formulaireVide = {
+  prenom: "",
+  nom: "",
+  email: "",
+  mot_de_passe: "",
+  role: "UTILISATEUR_STANDARD",
+  type_compte: "METIER",
+  entreprise: "COREF",
+  fonction: "",
+  nom_complet: "",
+  actif: true,
+};
+
+function messageErreur(detail: unknown) {
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((element) =>
+        typeof element === "object" &&
+        element !== null &&
+        "msg" in element
+          ? String(element.msg)
+          : ""
+      )
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  return "Opération impossible.";
+}
+
 export default function UtilisateursPage() {
   const { utilisateur } = useAuth();
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [utilisateurEdite, setUtilisateurEdite] =
+    useState<Utilisateur | null>(null);
   const [erreur, setErreur] = useState("");
-  const [form, setForm] = useState({
-    prenom: "",
-    nom: "",
-    email: "",
-    mot_de_passe: "",
-    role: "UTILISATEUR_STANDARD",
-    type_compte: "METIER",
-    entreprise: "COREF",
-    fonction: "",
-    nom_complet: "",
-  });
+  const [form, setForm] = useState(formulaireVide);
 
   const administrateurTechnique =
     utilisateur.role === "ADMINISTRATEUR_TECHNIQUE";
@@ -59,56 +84,113 @@ export default function UtilisateursPage() {
     const response = await fetch(`${API_URL}/api/utilisateurs`, {
       headers: entetesAuthentifiees(),
     });
-    if (response.ok) setUtilisateurs(await response.json());
+
+    if (response.ok) {
+      setUtilisateurs(await response.json());
+    }
   }
 
   useEffect(() => {
     if (peutGerer) charger();
   }, [peutGerer]);
 
-  async function creer(event: FormEvent) {
+  function ouvrirCreation() {
+    setUtilisateurEdite(null);
+    setForm(formulaireVide);
+    setErreur("");
+    setModalOuverte(true);
+  }
+
+  function ouvrirEdition(element: Utilisateur) {
+    setUtilisateurEdite(element);
+    setForm({
+      prenom: element.prenom ?? "",
+      nom: element.nom ?? "",
+      email: element.email,
+      mot_de_passe: "",
+      role: element.role,
+      type_compte: element.type_compte,
+      entreprise: element.entreprise,
+      fonction: element.fonction ?? "",
+      nom_complet: element.nom_complet,
+      actif: element.actif,
+    });
+    setErreur("");
+    setModalOuverte(true);
+  }
+
+  async function enregistrer(event: FormEvent) {
     event.preventDefault();
     setErreur("");
 
-    const response = await fetch(`${API_URL}/api/utilisateurs`, {
-      method: "POST",
-      headers: entetesAuthentifiees({
-        "Content-Type": "application/json",
-      }),
-      body: JSON.stringify({
-        ...form,
-        prenom: form.type_compte === "METIER" ? form.prenom : null,
-        nom: form.type_compte === "METIER" ? form.nom : null,
-        nom_complet:
-          form.type_compte === "TECHNIQUE"
-            ? form.nom_complet
-            : null,
-        fonction: form.fonction || null,
-      }),
-    });
+    const edition = utilisateurEdite !== null;
+    const response = await fetch(
+      edition
+        ? `${API_URL}/api/utilisateurs/${utilisateurEdite.id}`
+        : `${API_URL}/api/utilisateurs`,
+      {
+        method: edition ? "PATCH" : "POST",
+        headers: entetesAuthentifiees({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          prenom: form.type_compte === "METIER" ? form.prenom : null,
+          nom: form.type_compte === "METIER" ? form.nom : null,
+          nom_complet:
+            form.type_compte === "TECHNIQUE"
+              ? form.nom_complet
+              : null,
+          email: form.email,
+          ...(form.mot_de_passe
+            ? { mot_de_passe: form.mot_de_passe }
+            : {}),
+          role: form.role,
+          type_compte: form.type_compte,
+          entreprise: form.entreprise,
+          fonction: form.fonction || null,
+          ...(edition ? { actif: form.actif } : {}),
+        }),
+      }
+    );
+
+    const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const detail = await response.json().catch(() => null);
-      setErreur(
-        typeof detail?.detail === "string"
-          ? detail.detail
-          : "Création impossible."
-      );
+      setErreur(messageErreur(data?.detail));
       return;
     }
 
     setModalOuverte(false);
-    setForm({
-      prenom: "",
-      nom: "",
-      email: "",
-      mot_de_passe: "",
-      role: "UTILISATEUR_STANDARD",
-      type_compte: "METIER",
-      entreprise: "COREF",
-      fonction: "",
-      nom_complet: "",
-    });
+    setUtilisateurEdite(null);
+    setForm(formulaireVide);
+    await charger();
+  }
+
+  async function supprimer(element: Utilisateur) {
+    if (
+      !window.confirm(
+        `Supprimer le compte de ${element.nom_complet} ?\n\n` +
+          "Le compte sera désactivé et ses sessions seront immédiatement révoquées. " +
+          "Son historique métier sera conservé."
+      )
+    ) {
+      return;
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/utilisateurs/${element.id}`,
+      {
+        method: "DELETE",
+        headers: entetesAuthentifiees(),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      window.alert(messageErreur(data?.detail));
+      return;
+    }
+
     await charger();
   }
 
@@ -130,14 +212,12 @@ export default function UtilisateursPage() {
           <span className="eyebrow">Administration</span>
           <h1>Utilisateurs</h1>
           <p>
-            Les comptes techniques SiRe Engineering sont séparés des
-            utilisateurs métier COREF.
+            Seuls les administrateurs peuvent créer, modifier ou supprimer
+            les comptes.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => setModalOuverte(true)}
-        >
+
+        <Button variant="secondary" onClick={ouvrirCreation}>
           <Plus size={18} />
           Nouvel utilisateur
         </Button>
@@ -155,24 +235,74 @@ export default function UtilisateursPage() {
                 <th>Type</th>
                 <th>Rôle</th>
                 <th>Statut</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
+
             <tbody>
-              {utilisateurs.map((element) => (
-                <tr key={element.id}>
-                  <td><strong>{element.nom_complet}</strong></td>
-                  <td>{element.entreprise}</td>
-                  <td>{element.email}</td>
-                  <td>{element.fonction ?? "—"}</td>
-                  <td>
-                    {element.type_compte === "TECHNIQUE"
-                      ? "Technique"
-                      : "Métier"}
-                  </td>
-                  <td>{element.role.replaceAll("_", " ")}</td>
-                  <td>{element.actif ? "Actif" : "Inactif"}</td>
-                </tr>
-              ))}
+              {utilisateurs.map((element) => {
+                const compteCourant = element.id === utilisateur.id;
+
+                return (
+                  <tr
+                    key={element.id}
+                    className={!element.actif ? styles.inactiveRow : ""}
+                  >
+                    <td>
+                      <strong>{element.nom_complet}</strong>
+                      {compteCourant && (
+                        <small className="table-subtext">
+                          Votre compte
+                        </small>
+                      )}
+                    </td>
+                    <td>{element.entreprise}</td>
+                    <td>{element.email}</td>
+                    <td>{element.fonction ?? "—"}</td>
+                    <td>
+                      {element.type_compte === "TECHNIQUE"
+                        ? "Technique"
+                        : "Métier"}
+                    </td>
+                    <td>{element.role.replaceAll("_", " ")}</td>
+                    <td>
+                      <span
+                        className={
+                          element.actif
+                            ? styles.activeStatus
+                            : styles.inactiveStatus
+                        }
+                      >
+                        {element.actif ? "Actif" : "Supprimé"}
+                      </span>
+                    </td>
+                    <td>
+                      {!compteCourant && (
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            title="Modifier l’utilisateur"
+                            onClick={() => ouvrirEdition(element)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+
+                          {element.actif && (
+                            <button
+                              type="button"
+                              title="Supprimer l’utilisateur"
+                              className={styles.deleteButton}
+                              onClick={() => supprimer(element)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -189,12 +319,20 @@ export default function UtilisateursPage() {
           >
             <div className="modal-header">
               <div>
-                <span className="eyebrow">Nouveau compte</span>
-                <h2>Créer un utilisateur</h2>
+                <span className="eyebrow">
+                  {utilisateurEdite
+                    ? "Modification du compte"
+                    : "Nouveau compte"}
+                </span>
+                <h2>
+                  {utilisateurEdite
+                    ? `Modifier ${utilisateurEdite.nom_complet}`
+                    : "Créer un utilisateur"}
+                </h2>
               </div>
             </div>
 
-            <form onSubmit={creer}>
+            <form onSubmit={enregistrer}>
               <div className="form-grid">
                 {administrateurTechnique && (
                   <label className="field field-wide">
@@ -240,6 +378,7 @@ export default function UtilisateursPage() {
                         }
                       />
                     </label>
+
                     <label className="field">
                       <span>Nom *</span>
                       <input
@@ -311,12 +450,21 @@ export default function UtilisateursPage() {
                 </label>
 
                 <label className="field">
-                  <span>Mot de passe temporaire *</span>
+                  <span>
+                    {utilisateurEdite
+                      ? "Nouveau mot de passe"
+                      : "Mot de passe temporaire *"}
+                  </span>
                   <input
-                    required
+                    required={!utilisateurEdite}
                     minLength={10}
                     type="password"
                     value={form.mot_de_passe}
+                    placeholder={
+                      utilisateurEdite
+                        ? "Laisser vide pour ne pas modifier"
+                        : ""
+                    }
                     onChange={(event) =>
                       setForm({
                         ...form,
@@ -345,12 +493,30 @@ export default function UtilisateursPage() {
                     ))}
                   </select>
                 </label>
+
+                {utilisateurEdite && (
+                  <label className="field field-wide">
+                    <span>Statut du compte</span>
+                    <select
+                      value={form.actif ? "ACTIF" : "INACTIF"}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          actif: event.target.value === "ACTIF",
+                        })
+                      }
+                    >
+                      <option value="ACTIF">Actif</option>
+                      <option value="INACTIF">
+                        Supprimé / désactivé
+                      </option>
+                    </select>
+                  </label>
+                )}
               </div>
 
               {erreur && (
-                <div style={{ color: "#b42318", marginTop: 12 }}>
-                  {erreur}
-                </div>
+                <div className={styles.error}>{erreur}</div>
               )}
 
               <div className="modal-actions">
@@ -361,7 +527,12 @@ export default function UtilisateursPage() {
                 >
                   Annuler
                 </Button>
-                <Button type="submit">Créer le compte</Button>
+
+                <Button type="submit">
+                  {utilisateurEdite
+                    ? "Enregistrer les modifications"
+                    : "Créer le compte"}
+                </Button>
               </div>
             </form>
           </section>
