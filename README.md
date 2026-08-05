@@ -1,68 +1,49 @@
 # COREF Logistique
 
-Socle initial de l'application de gestion d'inventaire et de matériel de COREF.
+Application de gestion d'inventaire et de matériel pour COREF.
 
-## Architecture
+## Version 0.2
 
-- `frontend` : Next.js / TypeScript
-- `backend` : FastAPI / SQLAlchemy
-- `db` : PostgreSQL
-- orchestration locale : Docker Compose
+Cette version ajoute :
+
+- le référentiel Articles ;
+- la création, la recherche et l'archivage d'articles ;
+- les API CRUD FastAPI ;
+- la validation des références uniques ;
+- les migrations Alembic ;
+- la persistance PostgreSQL.
 
 ## Démarrage
 
-1. Copier le fichier d'environnement :
-
-```bash
-cp .env.example .env
-```
-
-Sous PowerShell :
-
 ```powershell
 Copy-Item .env.example .env
-```
-
-2. Lancer l'application :
-
-```bash
 docker compose up --build
 ```
 
-3. Ouvrir :
+Adresses :
 
-- Application : http://localhost:3000
-- Documentation API : http://localhost:8000/docs
-- État de l'API : http://localhost:8000/api/health
+- application : http://localhost:3000
+- documentation API : http://localhost:8000/docs
+- contrôle API : http://localhost:8000/api/health
 
-## Arrêt
+## Mise à jour depuis la version 0.1
 
-```bash
-docker compose down
-```
+Si la base locale de la version 0.1 ne contient aucune donnée importante, repartir proprement :
 
-Pour supprimer également la base locale :
-
-```bash
+```powershell
 docker compose down -v
+docker compose up --build
 ```
 
-## Première version du domaine
+La suppression du volume est nécessaire ici car le premier prototype créait ses tables sans migrations.
 
-Le socle contient déjà les entités suivantes :
+## Git
 
-- articles ;
-- emplacements ;
-- mouvements de stock.
+Travail à réaliser sur la branche :
 
-Les tables sont créées automatiquement au démarrage pour faciliter le prototypage. Avant la mise en production, cette création automatique sera remplacée par des migrations Alembic.
-
-## Commandes Git suggérées
-
-```bash
+```powershell
+git checkout feature/articles
 git add .
-git commit -m "feat: initialise application stack"
-git push
+git commit -m "feat: add articles module"
+git push -u origin feature/articles
 ```
-# COREF-Logistique
-Application de gestion des matériaux et matériels
