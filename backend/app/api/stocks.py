@@ -78,7 +78,9 @@ def resume_stocks(db: Session = Depends(get_db)) -> StockResume:
     for article, disponible in totaux.values():
         if disponible <= 0:
             ruptures += 1
-        elif disponible <= float(max(article.seuil_alerte, article.stock_minimum)):
+        elif disponible <= float(
+            max(article.seuil_alerte, article.stock_minimum)
+        ):
             alertes += 1
 
     return StockResume(
@@ -116,8 +118,16 @@ def definir_stock(
         )
         db.add(stock)
 
+    if payload.quantite_physique < stock.quantite_reservee:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "La quantité physique ne peut pas être inférieure aux "
+                "réservations actives. Libérez d’abord les réservations."
+            ),
+        )
+
     stock.quantite_physique = payload.quantite_physique
-    stock.quantite_reservee = payload.quantite_reservee
     db.commit()
     db.refresh(stock)
     return stock

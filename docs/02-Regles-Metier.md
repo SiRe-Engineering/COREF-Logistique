@@ -1,22 +1,33 @@
 # Règles métier — COREF Logistique
 
-## Stocks, mouvements et affaires
+## Réservations
 
-- Une sortie doit être rattachée à une affaire active ou être déclarée libre.
-- Les mouvements sont immuables.
-- Les mouvements de béton exigent un lot.
-- Le stock et le stock par lot sont mis à jour dans la même transaction.
+- Le champ réservé du stock n’est jamais saisi manuellement.
+- Chaque quantité réservée doit correspondre à une réservation identifiable.
+- Une réservation indique qui réserve, pour quelle préparation et pour quelle affaire.
+- La validation d’une préparation crée les réservations.
+- Une modification d’une préparation validée ou en cours synchronise immédiatement
+  les quantités réservées.
+- La suppression d’une ligne libère sa réservation.
+- L’expédition libère la réservation avant de créer la sortie de stock.
+- Une quantité physique ne peut pas être abaissée sous le total des réservations actives.
+- Les réservations historiques existantes sont reprises avec le motif
+  `Reprise historique`.
 
-## Matériels
+## Préparations
 
-- Chaque matériel reçoit un numéro d’inventaire automatique `MAT-000001`.
-- Un numéro de série, lorsqu’il est renseigné, est unique.
-- Les états disponibles sont : Disponible, En chantier, En maintenance,
-  Hors service et Perdu.
-- Un matériel en chantier doit obligatoirement être affecté à une affaire active.
-- Une affaire terminée ou annulée ne peut pas recevoir de matériel.
-- La prochaine date de contrôle ne peut pas précéder le dernier contrôle.
-- Les échéances sous trente jours sont considérées comme des alertes.
-- Le matériel peut être localisé dans un emplacement COREF.
-- La modification de l’état et de l’affectation est historisée uniquement à
-  partir du futur module de mouvements de matériel.
+- Une préparation reste éditable aux statuts Brouillon, Validée et En préparation.
+- Les informations générales, les quantités, les lots et les emplacements peuvent
+  être modifiés tant que la préparation n’est pas prête.
+- Les lignes peuvent être ajoutées ou supprimées pendant ces statuts.
+- Une préparation prête ou expédiée est figée.
+
+## Notifications
+
+- Le demandeur reçoit une notification lors de la création, de la réservation,
+  du démarrage, de la mise à disposition et de l’expédition.
+- Le préparateur reçoit les mêmes notifications lorsqu’il est différent du demandeur.
+- Une nouvelle attribution génère une notification au nouvel utilisateur.
+- Les notifications sont nominatives et affichées dans le tableau de bord.
+- En attendant le module d’authentification, l’utilisateur courant est sélectionné
+  dans le tableau de bord et mémorisé localement dans le navigateur.

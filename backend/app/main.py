@@ -11,6 +11,9 @@ from app.api import (
     lots_beton_router,
     materiels_router,
     mouvements_router,
+    preparations_router,
+    router_notifications,
+    router_reservations,
     stocks_router,
 )
 from app.core.config import settings
@@ -32,10 +35,13 @@ app.include_router(health_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
 app.include_router(stocks_router)
+app.include_router(router_reservations)
+app.include_router(router_notifications)
 app.include_router(lots_beton_router)
 app.include_router(affaires_router)
 app.include_router(materiels_router)
 app.include_router(inventaires_router)
+app.include_router(preparations_router)
 app.include_router(mouvements_router)
 app.include_router(articles_router)
 

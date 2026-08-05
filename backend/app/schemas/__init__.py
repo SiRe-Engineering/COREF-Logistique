@@ -13,6 +13,11 @@ from app.schemas.famille import (
     SousFamilleRead,
     SousFamilleUpdate,
 )
+from app.schemas.inventaire import (
+    InventaireCreate,
+    InventaireRead,
+    LigneInventaireUpdate,
+)
 from app.schemas.lot_beton import (
     LotBetonCreate,
     LotBetonRead,
@@ -20,6 +25,15 @@ from app.schemas.lot_beton import (
 )
 from app.schemas.materiel import MaterielCreate, MaterielRead, MaterielUpdate
 from app.schemas.mouvement import MouvementCreate, MouvementRead
+from app.schemas.preparation import (
+    LignePreparationCreate,
+    LignePreparationRead,
+    LignePreparationUpdate,
+    PreparationCreate,
+    PreparationRead,
+    PreparationUpdate,
+)
+from app.schemas.reservation import NotificationRead, ReservationRead
 from app.schemas.stock import StockRead, StockResume, StockSet
 
 __all__ = [
@@ -35,6 +49,12 @@ __all__ = [
     "FamilleCreate",
     "FamilleRead",
     "FamilleUpdate",
+    "InventaireCreate",
+    "InventaireRead",
+    "LigneInventaireUpdate",
+    "LignePreparationCreate",
+    "LignePreparationRead",
+    "LignePreparationUpdate",
     "LotBetonCreate",
     "LotBetonRead",
     "LotBetonUpdate",
@@ -43,6 +63,11 @@ __all__ = [
     "MaterielUpdate",
     "MouvementCreate",
     "MouvementRead",
+    "NotificationRead",
+    "PreparationCreate",
+    "PreparationRead",
+    "PreparationUpdate",
+    "ReservationRead",
     "SousFamilleCreate",
     "SousFamilleRead",
     "SousFamilleUpdate",

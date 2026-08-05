@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Boxes,
   CircleGauge,
   PackageCheck,
   Plus,
@@ -12,7 +11,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
+import styles from "./page.module.css";
 
 type Article = {
   id: number;
@@ -43,6 +44,18 @@ type Stock = {
   emplacement: Emplacement;
 };
 
+type Reservation = {
+  id: number;
+  reference: string;
+  quantite: string;
+  reserve_pour: string;
+  reserve_par: string | null;
+  motif: string | null;
+  date_creation: string;
+  lot: { numero_lot_fournisseur: string } | null;
+  preparation: { reference: string; nom: string } | null;
+};
+
 type Resume = {
   lignes_stock: number;
   articles_stockes: number;
@@ -50,13 +63,13 @@ type Resume = {
   alertes: number;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 const initialForm = {
   article_id: "",
   emplacement_id: "",
   quantite_physique: "0",
-  quantite_reservee: "0",
 };
 
 function statutStock(stock: Stock) {
@@ -66,8 +79,12 @@ function statutStock(stock: Stock) {
     Number(stock.article.seuil_alerte)
   );
 
-  if (disponible <= 0) return { label: "Rupture", tone: "beton" as const };
-  if (disponible <= seuil) return { label: "Alerte", tone: "warning" as const };
+  if (disponible <= 0) {
+    return { label: "Rupture", tone: "beton" as const };
+  }
+  if (disponible <= seuil) {
+    return { label: "Alerte", tone: "warning" as const };
+  }
   return { label: "Disponible", tone: "success" as const };
 }
 
@@ -75,6 +92,8 @@ export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [selection, setSelection] = useState<Stock | null>(null);
   const [resume, setResume] = useState<Resume>({
     lignes_stock: 0,
     articles_stockes: 0,
@@ -93,30 +112,17 @@ export default function StocksPage() {
 
   async function charger() {
     try {
-      const [stocksResponse, articlesResponse, emplacementsResponse, resumeResponse] =
-        await Promise.all([
-          fetch(`${API_URL}/api/stocks`),
-          fetch(`${API_URL}/api/articles`),
-          fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-          fetch(`${API_URL}/api/stocks/resume`),
-        ]);
+      const responses = await Promise.all([
+        fetch(`${API_URL}/api/stocks`),
+        fetch(`${API_URL}/api/articles`),
+        fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+        fetch(`${API_URL}/api/stocks/resume`),
+      ]);
 
-      if (
-        !stocksResponse.ok ||
-        !articlesResponse.ok ||
-        !emplacementsResponse.ok ||
-        !resumeResponse.ok
-      ) {
-        throw new Error();
-      }
+      if (responses.some((response) => !response.ok)) throw new Error();
 
       const [stocksData, articlesData, emplacementsData, resumeData] =
-        await Promise.all([
-          stocksResponse.json(),
-          articlesResponse.json(),
-          emplacementsResponse.json(),
-          resumeResponse.json(),
-        ]);
+        await Promise.all(responses.map((response) => response.json()));
 
       setStocks(stocksData);
       setArticles(articlesData);
@@ -133,6 +139,15 @@ export default function StocksPage() {
   useEffect(() => {
     charger();
   }, []);
+
+  async function ouvrirStock(stock: Stock) {
+    setSelection(stock);
+    const response = await fetch(
+      `${API_URL}/api/reservations?article_id=${stock.article_id}` +
+        `&emplacement_id=${stock.emplacement_id}`
+    );
+    setReservations(response.ok ? await response.json() : []);
+  }
 
   const stocksFiltres = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
@@ -172,7 +187,6 @@ export default function StocksPage() {
           article_id: Number(form.article_id),
           emplacement_id: Number(form.emplacement_id),
           quantite_physique: Number(form.quantite_physique),
-          quantite_reservee: Number(form.quantite_reservee),
         }),
       });
 
@@ -185,7 +199,7 @@ export default function StocksPage() {
       setForm(initialForm);
       setToast({
         type: "success",
-        message: "Le stock a été enregistré.",
+        message: "La quantité physique a été enregistrée.",
       });
       await charger();
     } catch (cause) {
@@ -199,16 +213,6 @@ export default function StocksPage() {
     }
   }
 
-  function modifier(stock: Stock) {
-    setForm({
-      article_id: String(stock.article_id),
-      emplacement_id: String(stock.emplacement_id),
-      quantite_physique: String(stock.quantite_physique),
-      quantite_reservee: String(stock.quantite_reservee),
-    });
-    setModalOuverte(true);
-  }
-
   return (
     <div>
       <div className="breadcrumb">Exploitation / Stocks</div>
@@ -218,14 +222,19 @@ export default function StocksPage() {
           <span className="eyebrow">Exploitation</span>
           <h1>Stocks</h1>
           <p>
-            Consultez les quantités physiques, réservées et disponibles par
-            emplacement.
+            Les réservations sont calculées depuis les besoins identifiés.
           </p>
         </div>
 
-        <Button variant="secondary" onClick={() => setModalOuverte(true)}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setForm(initialForm);
+            setModalOuverte(true);
+          }}
+        >
           <Plus size={18} />
-          Définir un stock
+          Définir un stock physique
         </Button>
       </div>
 
@@ -261,7 +270,7 @@ export default function StocksPage() {
       </section>
 
       <section className="content-card">
-        <div className="stock-filters">
+        <div className="stock-toolbar">
           <label className="search-field">
             <Search size={17} />
             <input
@@ -274,7 +283,9 @@ export default function StocksPage() {
 
           <select
             value={filtreEmplacement}
-            onChange={(event) => setFiltreEmplacement(event.target.value)}
+            onChange={(event) =>
+              setFiltreEmplacement(event.target.value)
+            }
           >
             <option value="">Tous les emplacements</option>
             {emplacements.map((emplacement) => (
@@ -288,7 +299,9 @@ export default function StocksPage() {
             <input
               type="checkbox"
               checked={alertesUniquement}
-              onChange={(event) => setAlertesUniquement(event.target.checked)}
+              onChange={(event) =>
+                setAlertesUniquement(event.target.checked)
+              }
             />
             Alertes uniquement
           </label>
@@ -310,20 +323,19 @@ export default function StocksPage() {
             <tbody>
               {stocksFiltres.map((stock) => {
                 const statut = statutStock(stock);
-
                 return (
                   <tr
                     key={stock.id}
                     className="clickable-row"
-                    onClick={() => modifier(stock)}
+                    onClick={() => ouvrirStock(stock)}
                   >
                     <td>
-                      <div className="stock-article-cell">
-                        <span className="reference-chip">
-                          {stock.article.reference}
-                        </span>
-                        <strong>{stock.article.designation}</strong>
-                      </div>
+                      <span className="reference-chip">
+                        {stock.article.reference}
+                      </span>
+                      <strong className="table-title">
+                        {stock.article.designation}
+                      </strong>
                     </td>
                     <td>
                       <strong>{stock.emplacement.nom}</strong>
@@ -336,8 +348,10 @@ export default function StocksPage() {
                       {stock.article.unite}
                     </td>
                     <td>
-                      {Number(stock.quantite_reservee).toLocaleString("fr-FR")}{" "}
-                      {stock.article.unite}
+                      <strong>
+                        {Number(stock.quantite_reservee).toLocaleString("fr-FR")}{" "}
+                        {stock.article.unite}
+                      </strong>
                     </td>
                     <td>
                       <strong>
@@ -355,37 +369,86 @@ export default function StocksPage() {
                   </tr>
                 );
               })}
-
-              {stocksFiltres.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="empty-state">
-                    <Boxes size={24} />
-                    <strong>Aucune ligne de stock</strong>
-                    <span>
-                      Définissez le stock initial d’un article dans un
-                      emplacement.
-                    </span>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </section>
 
+      <Drawer
+        open={selection !== null}
+        title={selection?.article.reference ?? ""}
+        onClose={() => {
+          setSelection(null);
+          setReservations([]);
+        }}
+      >
+        {selection && (
+          <div>
+            <h3>{selection.article.designation}</h3>
+            <p className="muted-text">{selection.emplacement.nom}</p>
+
+            <div className={styles.stockDetail}>
+              <div>
+                <span>Physique</span>
+                <strong>{selection.quantite_physique}</strong>
+              </div>
+              <div>
+                <span>Réservé</span>
+                <strong>{selection.quantite_reservee}</strong>
+              </div>
+              <div>
+                <span>Disponible</span>
+                <strong>{selection.quantite_disponible}</strong>
+              </div>
+            </div>
+
+            <section className="drawer-section">
+              <h4>Détail des réservations</h4>
+              <div className={styles.reservations}>
+                {reservations.map((reservation) => (
+                  <article key={reservation.id}>
+                    <div>
+                      <strong>{reservation.reserve_pour}</strong>
+                      <span>{reservation.reference}</span>
+                    </div>
+                    <strong>
+                      {Number(reservation.quantite).toLocaleString("fr-FR")}{" "}
+                      {selection.article.unite}
+                    </strong>
+                    <small>
+                      Demandé par {reservation.reserve_par ?? "—"}
+                      {reservation.lot
+                        ? ` · Lot ${reservation.lot.numero_lot_fournisseur}`
+                        : ""}
+                    </small>
+                  </article>
+                ))}
+
+                {reservations.length === 0 && (
+                  <p className="muted-text">Aucune réservation active.</p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </Drawer>
+
       {modalOuverte && (
-        <div className="modal-backdrop" onMouseDown={() => setModalOuverte(false)}>
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setModalOuverte(false)}
+        >
           <section
             className="modal-card"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <div>
-                <span className="eyebrow">Stock initial / correction</span>
-                <h2>Définir un stock</h2>
+                <span className="eyebrow">Stock physique</span>
+                <h2>Définir une quantité physique</h2>
                 <p>
-                  Cette saisie directe sera remplacée par les mouvements
-                  historisés dans le prochain lot.
+                  La quantité réservée est gérée automatiquement et ne peut
+                  pas être saisie ici.
                 </p>
               </div>
             </div>
@@ -398,7 +461,10 @@ export default function StocksPage() {
                     required
                     value={form.article_id}
                     onChange={(event) =>
-                      setForm({ ...form, article_id: event.target.value })
+                      setForm({
+                        ...form,
+                        article_id: event.target.value,
+                      })
                     }
                   >
                     <option value="">Sélectionner</option>
@@ -416,7 +482,10 @@ export default function StocksPage() {
                     required
                     value={form.emplacement_id}
                     onChange={(event) =>
-                      setForm({ ...form, emplacement_id: event.target.value })
+                      setForm({
+                        ...form,
+                        emplacement_id: event.target.value,
+                      })
                     }
                   >
                     <option value="">Sélectionner</option>
@@ -428,7 +497,7 @@ export default function StocksPage() {
                   </select>
                 </label>
 
-                <label className="field">
+                <label className="field field-wide">
                   <span>Quantité physique *</span>
                   <input
                     required
@@ -444,22 +513,6 @@ export default function StocksPage() {
                     }
                   />
                 </label>
-
-                <label className="field">
-                  <span>Quantité réservée</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={form.quantite_reservee}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        quantite_reservee: event.target.value,
-                      })
-                    }
-                  />
-                </label>
               </div>
 
               <div className="modal-actions">
@@ -470,7 +523,7 @@ export default function StocksPage() {
                 >
                   Annuler
                 </Button>
-                <Button type="submit">Enregistrer le stock</Button>
+                <Button type="submit">Enregistrer</Button>
               </div>
             </form>
           </section>

@@ -7,6 +7,11 @@ from app.api.inventaires import router as inventaires_router
 from app.api.lots_beton import router as lots_beton_router
 from app.api.materiels import router as materiels_router
 from app.api.mouvements import router as mouvements_router
+from app.api.preparations import router as preparations_router
+from app.api.reservations import (
+    router_notifications,
+    router_reservations,
+)
 from app.api.stocks import router as stocks_router
 
 __all__ = [
@@ -19,5 +24,8 @@ __all__ = [
     "lots_beton_router",
     "materiels_router",
     "mouvements_router",
+    "preparations_router",
+    "router_notifications",
+    "router_reservations",
     "stocks_router",
 ]

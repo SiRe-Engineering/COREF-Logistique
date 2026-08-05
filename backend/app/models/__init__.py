@@ -6,6 +6,8 @@ from app.models.inventaire import Inventaire, LigneInventaire
 from app.models.lot_beton import LotBeton, StockLot
 from app.models.materiel import Materiel
 from app.models.mouvement import MouvementStock
+from app.models.preparation import LignePreparation, Preparation
+from app.models.reservation import Notification, ReservationStock
 from app.models.stock import Stock
 
 __all__ = [
@@ -15,9 +17,13 @@ __all__ = [
     "Famille",
     "Inventaire",
     "LigneInventaire",
+    "LignePreparation",
     "LotBeton",
     "Materiel",
     "MouvementStock",
+    "Notification",
+    "Preparation",
+    "ReservationStock",
     "SousFamille",
     "Stock",
     "StockLot",

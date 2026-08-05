@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ArticleStockRead(BaseModel):
@@ -29,15 +29,6 @@ class StockSet(BaseModel):
     article_id: int
     emplacement_id: int
     quantite_physique: Decimal = Field(ge=0)
-    quantite_reservee: Decimal = Field(default=0, ge=0)
-
-    @model_validator(mode="after")
-    def valider_quantites(self):
-        if self.quantite_reservee > self.quantite_physique:
-            raise ValueError(
-                "La quantité réservée ne peut pas dépasser la quantité physique."
-            )
-        return self
 
 
 class StockRead(BaseModel):
