@@ -13,7 +13,10 @@ class AffairePreparationRead(BaseModel):
     nom: str
     client: str | None
     site: str | None
+    zone_intervention: str | None
     charge_affaires: str | None
+    date_debut: date | None
+    date_fin_prevue: date | None
 
 
 class ArticlePreparationRead(BaseModel):

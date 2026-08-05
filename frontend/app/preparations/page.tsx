@@ -9,7 +9,9 @@ import {
   Search,
   Send,
   Trash2,
+  XCircle,
 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
@@ -20,6 +22,12 @@ type Affaire = {
   reference: string;
   code_externe: string | null;
   nom: string;
+  client: string | null;
+  site: string | null;
+  zone_intervention: string | null;
+  charge_affaires: string | null;
+  date_debut: string | null;
+  date_fin_prevue: string | null;
   statut: string;
 };
 
@@ -94,6 +102,50 @@ const ligneVide = {
   commentaire: "",
 };
 
+
+function statutPreparation(statut: string) {
+  if (statut === "BROUILLON") {
+    return { label: "Brouillon", tone: "warning" as const };
+  }
+  if (statut === "VALIDEE") {
+    return { label: "Validée", tone: "isolants" as const };
+  }
+  if (statut === "EN_PREPARATION") {
+    return { label: "En préparation", tone: "warning" as const };
+  }
+  if (statut === "PRETE") {
+    return { label: "Prête", tone: "success" as const };
+  }
+  return { label: "Expédiée", tone: "neutral" as const };
+}
+
+function formaterDate(date: string | null) {
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("fr-FR").format(
+    new Date(`${date}T00:00:00`)
+  );
+}
+
+function progression(preparation: Preparation) {
+  if (preparation.lignes.length === 0) return 0;
+
+  const demande = preparation.lignes.reduce(
+    (total, ligne) => total + Number(ligne.quantite_demandee),
+    0
+  );
+  const prepare = preparation.lignes.reduce(
+    (total, ligne) =>
+      total +
+      Math.min(
+        Number(ligne.quantite_preparee),
+        Number(ligne.quantite_demandee)
+      ),
+    0
+  );
+
+  return demande > 0 ? Math.round((prepare / demande) * 100) : 0;
+}
+
 export default function PreparationsPage() {
   const [preparations, setPreparations] = useState<Preparation[]>([]);
   const [affaires, setAffaires] = useState<Affaire[]>([]);
@@ -102,6 +154,7 @@ export default function PreparationsPage() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [selection, setSelection] = useState<Preparation | null>(null);
   const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
   const [editionEntete, setEditionEntete] = useState(false);
   const [ligneEditee, setLigneEditee] = useState<Ligne | null>(null);
@@ -147,17 +200,35 @@ export default function PreparationsPage() {
 
   const preparationsFiltrees = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
-    return preparations.filter(
-      (preparation) =>
+
+    return preparations.filter((preparation) => {
+      const correspondRecherche =
         !terme ||
         preparation.reference.toLowerCase().includes(terme) ||
         preparation.nom.toLowerCase().includes(terme) ||
         preparation.affaire.nom.toLowerCase().includes(terme) ||
         (preparation.affaire.code_externe ?? "")
           .toLowerCase()
-          .includes(terme)
-    );
-  }, [preparations, recherche]);
+          .includes(terme) ||
+        (preparation.affaire.client ?? "")
+          .toLowerCase()
+          .includes(terme) ||
+        (preparation.affaire.site ?? "")
+          .toLowerCase()
+          .includes(terme) ||
+        (preparation.demandeur ?? "")
+          .toLowerCase()
+          .includes(terme) ||
+        (preparation.preparateur ?? "")
+          .toLowerCase()
+          .includes(terme);
+
+      const correspondStatut =
+        !filtreStatut || preparation.statut === filtreStatut;
+
+      return correspondRecherche && correspondStatut;
+    });
+  }, [preparations, recherche, filtreStatut]);
 
   const editable =
     selection !== null &&
@@ -342,6 +413,48 @@ export default function PreparationsPage() {
     }
   }
 
+
+  async function supprimerPreparation() {
+    if (!selection) return;
+
+    const confirmation = window.confirm(
+      `Supprimer définitivement ${selection.reference} ?\n\n` +
+        "Les réservations associées seront libérées. " +
+        "Cette action est impossible pour une préparation expédiée."
+    );
+
+    if (!confirmation) return;
+
+    const response = await fetch(
+      `${API_URL}/api/preparations/${selection.id}`,
+      { method: "DELETE" }
+    );
+
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      setToast({
+        type: "error",
+        message: detail?.detail ?? "Suppression impossible.",
+      });
+      return;
+    }
+
+    setPreparations((actuelles) =>
+      actuelles.filter(
+        (preparation) => preparation.id !== selection.id
+      )
+    );
+    setSelection(null);
+    setEditionEntete(false);
+    setLigneEditee(null);
+    setLigneForm(ligneVide);
+    setToast({
+      type: "success",
+      message: `${selection.reference} supprimée. Les réservations ont été libérées.`,
+    });
+  }
+
+
   async function action(actionName: string) {
     if (!selection) return;
 
@@ -398,33 +511,120 @@ export default function PreparationsPage() {
             <Search size={17} />
             <input
               type="search"
-              placeholder="Préparation ou affaire"
+              placeholder="Référence, affaire, client, demandeur ou préparateur"
               value={recherche}
               onChange={(event) => setRecherche(event.target.value)}
             />
           </label>
+
+          <select
+            value={filtreStatut}
+            onChange={(event) => setFiltreStatut(event.target.value)}
+          >
+            <option value="">Tous les statuts</option>
+            <option value="BROUILLON">Brouillon</option>
+            <option value="VALIDEE">Validée</option>
+            <option value="EN_PREPARATION">En préparation</option>
+            <option value="PRETE">Prête</option>
+            <option value="EXPEDIEE">Expédiée</option>
+          </select>
+
+          <span className={styles.resultCount}>
+            {preparationsFiltrees.length} préparation(s)
+          </span>
         </div>
 
-        <div className={styles.cards}>
-          {preparationsFiltrees.map((preparation) => (
-            <article
-              key={preparation.id}
-              className={styles.card}
-              onClick={() => ouvrirPreparation(preparation)}
-            >
-              <strong>{preparation.nom}</strong>
-              <span>{preparation.reference}</span>
-              <p>
-                {preparation.affaire.code_externe ||
-                  preparation.affaire.reference}{" "}
-                — {preparation.affaire.nom}
-              </p>
-              <div className={styles.cardFooter}>
-                <span>{preparation.lignes.length} ligne(s)</span>
-                <strong>{preparation.statut}</strong>
-              </div>
-            </article>
-          ))}
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Affaire</th>
+                <th>Client</th>
+                <th>Site / Zone</th>
+                <th>Demandeur</th>
+                <th>Préparateur</th>
+                <th>Début</th>
+                <th>Fin prévue</th>
+                <th>Avancement</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preparationsFiltrees.map((preparation) => {
+                const statut = statutPreparation(preparation.statut);
+                const avancement = progression(preparation);
+
+                return (
+                  <tr
+                    key={preparation.id}
+                    className="clickable-row"
+                    onClick={() => ouvrirPreparation(preparation)}
+                  >
+                    <td>
+                      <span className="reference-chip">
+                        {preparation.reference}
+                      </span>
+                      <strong className="table-title">
+                        {preparation.nom}
+                      </strong>
+                    </td>
+                    <td>
+                      <strong>
+                        {preparation.affaire.code_externe ||
+                          preparation.affaire.reference}
+                      </strong>
+                      <small className="table-subtext">
+                        {preparation.affaire.nom}
+                      </small>
+                    </td>
+                    <td>{preparation.affaire.client ?? "—"}</td>
+                    <td>
+                      <strong>{preparation.affaire.site ?? "—"}</strong>
+                      <small className="table-subtext">
+                        {preparation.affaire.zone_intervention ?? "—"}
+                      </small>
+                    </td>
+                    <td>{preparation.demandeur ?? "—"}</td>
+                    <td>{preparation.preparateur ?? "—"}</td>
+                    <td>
+                      {formaterDate(
+                        preparation.date_besoin ||
+                          preparation.affaire.date_debut
+                      )}
+                    </td>
+                    <td>
+                      {formaterDate(preparation.affaire.date_fin_prevue)}
+                    </td>
+                    <td>
+                      <div className={styles.progressCell}>
+                        <div className={styles.progressTrack}>
+                          <span style={{ width: `${avancement}%` }} />
+                        </div>
+                        <small>
+                          {avancement}% · {preparation.lignes.length} ligne(s)
+                        </small>
+                      </div>
+                    </td>
+                    <td>
+                      <Badge tone={statut.tone}>{statut.label}</Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {preparationsFiltrees.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="empty-state">
+                    <strong>Aucune préparation trouvée</strong>
+                    <span>
+                      Modifiez les filtres ou créez une nouvelle préparation.
+                    </span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -689,6 +889,16 @@ export default function PreparationsPage() {
                 <Button onClick={() => action("expedier")}>
                   <Send size={17} />
                   Expédier
+                </Button>
+              )}
+
+              {selection.statut !== "EXPEDIEE" && (
+                <Button
+                  variant="ghost"
+                  onClick={supprimerPreparation}
+                >
+                  <XCircle size={17} />
+                  Supprimer la préparation
                 </Button>
               )}
             </div>

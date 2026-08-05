@@ -1,52 +1,63 @@
 .filters {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) 220px auto;
+  align-items: center;
+  gap: 12px;
   padding: 18px;
   border-bottom: 1px solid var(--border);
 }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 18px;
-}
-
-.card {
-  display: grid;
-  gap: 5px;
-  padding: 16px;
-  cursor: pointer;
+.filters select {
+  width: 100%;
+  padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
+  border-radius: 8px;
+  background: white;
 }
 
-.card:hover {
-  border-color: #98a2b3;
-}
-
-.card span,
-.card p,
-.cardFooter span,
-.detailHeader p,
-.line span,
-.line small,
-.quantities span {
+.resultCount {
   color: var(--muted);
-  font-size: .76rem;
+  font-size: .78rem;
+  white-space: nowrap;
 }
 
-.cardFooter {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+.progressCell {
+  display: grid;
+  min-width: 120px;
+  gap: 6px;
+}
+
+.progressTrack {
+  overflow: hidden;
+  height: 7px;
+  border-radius: 999px;
+  background: #eaecf0;
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #c7271a;
+}
+
+.progressCell small {
+  color: var(--muted);
+  font-size: .71rem;
 }
 
 .detailHeader {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+}
+
+.detailHeader p,
+.line span,
+.line small,
+.quantities span {
+  color: var(--muted);
+  font-size: .76rem;
 }
 
 .editHeaderButton {
@@ -134,19 +145,23 @@
   background: white;
 }
 
-@media (max-width: 950px) {
-  .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1250px) {
+  .filters {
+    grid-template-columns: minmax(260px, 1fr) 200px;
   }
 
-  .line {
-    grid-template-columns: 1fr;
+  .resultCount {
+    grid-column: 1 / -1;
   }
 }
 
-@media (max-width: 620px) {
-  .cards,
+@media (max-width: 760px) {
+  .filters,
   .quantities {
+    grid-template-columns: 1fr;
+  }
+
+  .line {
     grid-template-columns: 1fr;
   }
 }
