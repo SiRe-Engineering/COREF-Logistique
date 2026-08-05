@@ -2,6 +2,7 @@ from app.api.affaires import router as affaires_router
 from app.api.articles import router as articles_router
 from app.api.auth import router as auth_router
 from app.api.emplacements import router as emplacements_router
+from app.api.demandes_sortie import router as demandes_sortie_router
 from app.api.familles import router as familles_router
 from app.api.health import router as health_router
 from app.api.inventaires import router as inventaires_router
@@ -21,6 +22,7 @@ __all__ = [
     "articles_router",
     "auth_router",
     "emplacements_router",
+    "demandes_sortie_router",
     "familles_router",
     "health_router",
     "inventaires_router",

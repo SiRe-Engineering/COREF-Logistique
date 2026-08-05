@@ -1,6 +1,7 @@
 from app.models.affaire import Affaire
 from app.models.article import Article
 from app.models.emplacement import Emplacement
+from app.models.demande_sortie import DemandeSortie
 from app.models.famille import Famille, SousFamille
 from app.models.inventaire import Inventaire, LigneInventaire
 from app.models.lot_beton import LotBeton, StockLot
@@ -15,6 +16,7 @@ __all__ = [
     "Affaire",
     "Article",
     "Emplacement",
+    "DemandeSortie",
     "Famille",
     "Inventaire",
     "LigneInventaire",

@@ -6,6 +6,7 @@ from app.api import (
     articles_router,
     auth_router,
     emplacements_router,
+    demandes_sortie_router,
     familles_router,
     health_router,
     inventaires_router,
@@ -38,6 +39,7 @@ app.include_router(auth_router)
 app.include_router(utilisateurs_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
+app.include_router(demandes_sortie_router)
 app.include_router(stocks_router)
 app.include_router(router_reservations)
 app.include_router(router_notifications)
