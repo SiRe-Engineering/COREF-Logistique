@@ -64,3 +64,5 @@ git add .
 git commit -m "feat: initialise application stack"
 git push
 ```
+# COREF-Logistique
+Application de gestion des matériaux et matériels
