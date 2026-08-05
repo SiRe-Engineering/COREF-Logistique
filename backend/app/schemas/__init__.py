@@ -1,3 +1,4 @@
+from app.schemas.affaire import AffaireCreate, AffaireRead, AffaireUpdate
 from app.schemas.article import ArticleCreate, ArticleRead, ArticleUpdate
 from app.schemas.emplacement import (
     EmplacementCreate,
@@ -21,6 +22,9 @@ from app.schemas.mouvement import MouvementCreate, MouvementRead
 from app.schemas.stock import StockRead, StockResume, StockSet
 
 __all__ = [
+    "AffaireCreate",
+    "AffaireRead",
+    "AffaireUpdate",
     "ArticleCreate",
     "ArticleRead",
     "ArticleUpdate",

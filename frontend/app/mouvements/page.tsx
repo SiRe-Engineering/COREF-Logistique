@@ -33,6 +33,18 @@ type Emplacement = {
   nom: string;
 };
 
+type Affaire = {
+  id: number;
+  reference: string;
+  code_externe: string | null;
+  nom: string;
+  client: string | null;
+  site: string | null;
+  zone_intervention: string | null;
+  charge_affaires: string | null;
+  statut: string;
+};
+
 type Lot = {
   id: number;
   article_id: number;
@@ -56,6 +68,12 @@ type Mouvement = {
   date_creation: string;
   article: Article;
   lot: Lot | null;
+  affaire: Affaire | null;
+  affaire_id: number | null;
+  sortie_libre: boolean;
+  zone_intervention: string | null;
+  charge_affaires: string | null;
+  vehicule: string | null;
   emplacement_source: Emplacement | null;
   emplacement_destination: Emplacement | null;
 };
@@ -67,6 +85,11 @@ const initialForm = {
   type: "ENTREE",
   article_id: "",
   lot_id: "",
+  affaire_id: "",
+  sortie_libre: false,
+  zone_intervention: "",
+  charge_affaires: "",
+  vehicule: "",
   emplacement_source_id: "",
   emplacement_destination_id: "",
   quantite: "",
@@ -101,6 +124,7 @@ export default function MouvementsPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
+  const [affaires, setAffaires] = useState<Affaire[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreType, setFiltreType] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
@@ -118,18 +142,21 @@ export default function MouvementsPage() {
         articlesResponse,
         emplacementsResponse,
         lotsResponse,
+        affairesResponse,
       ] = await Promise.all([
         fetch(`${API_URL}/api/mouvements`),
         fetch(`${API_URL}/api/articles`),
         fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
         fetch(`${API_URL}/api/lots-beton`),
+        fetch(`${API_URL}/api/affaires`),
       ]);
 
       if (
         !mouvementsResponse.ok ||
         !articlesResponse.ok ||
         !emplacementsResponse.ok ||
-        !lotsResponse.ok
+        !lotsResponse.ok ||
+        !affairesResponse.ok
       ) {
         throw new Error();
       }
@@ -139,17 +166,20 @@ export default function MouvementsPage() {
         articlesData,
         emplacementsData,
         lotsData,
+        affairesData,
       ] = await Promise.all([
         mouvementsResponse.json(),
         articlesResponse.json(),
         emplacementsResponse.json(),
         lotsResponse.json(),
+        affairesResponse.json(),
       ]);
 
       setMouvements(mouvementsData);
       setArticles(articlesData);
       setEmplacements(emplacementsData);
       setLots(lotsData);
+      setAffaires(affairesData);
     } catch {
       setToast({
         type: "error",
@@ -221,6 +251,11 @@ export default function MouvementsPage() {
           type: form.type,
           article_id: Number(form.article_id),
           lot_id: form.lot_id ? Number(form.lot_id) : null,
+          affaire_id: form.affaire_id ? Number(form.affaire_id) : null,
+          sortie_libre: form.sortie_libre,
+          zone_intervention: form.zone_intervention || null,
+          charge_affaires: form.charge_affaires || null,
+          vehicule: form.vehicule || null,
           emplacement_source_id: form.emplacement_source_id
             ? Number(form.emplacement_source_id)
             : null,
@@ -361,6 +396,7 @@ export default function MouvementsPage() {
                 <th>Article / lot</th>
                 <th>Flux</th>
                 <th>Quantité</th>
+                <th>Affaire</th>
                 <th>Motif</th>
               </tr>
             </thead>
@@ -421,13 +457,21 @@ export default function MouvementsPage() {
                       {mouvement.article.unite}
                     </strong>
                   </td>
+                  <td>
+                    {mouvement.affaire
+                      ? mouvement.affaire.code_externe ||
+                        mouvement.affaire.reference
+                      : mouvement.sortie_libre
+                        ? "Sortie libre"
+                        : "—"}
+                  </td>
                   <td>{mouvement.motif ?? "—"}</td>
                 </tr>
               ))}
 
               {mouvementsFiltres.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="empty-state">
+                  <td colSpan={8} className="empty-state">
                     <History size={24} />
                     <strong>Aucun mouvement</strong>
                     <span>
@@ -511,6 +555,11 @@ export default function MouvementsPage() {
                         ...form,
                         article_id: event.target.value,
                         lot_id: "",
+  affaire_id: "",
+  sortie_libre: false,
+  zone_intervention: "",
+  charge_affaires: "",
+  vehicule: "",
                       })
                     }
                   >
@@ -551,6 +600,110 @@ export default function MouvementsPage() {
                       croissante (FEFO).
                     </small>
                   </label>
+                )}
+
+
+                {form.type === "SORTIE" && (
+                  <>
+                    <label className="field field-wide">
+                      <span>Affaire chantier / atelier</span>
+                      <select
+                        value={form.affaire_id}
+                        disabled={form.sortie_libre}
+                        onChange={(event) => {
+                          const affaire = affaires.find(
+                            (element) =>
+                              element.id === Number(event.target.value)
+                          );
+                          setForm({
+                            ...form,
+                            affaire_id: event.target.value,
+                            charge_affaires:
+                              affaire?.charge_affaires ?? "",
+                            zone_intervention:
+                              affaire?.zone_intervention ?? "",
+                          });
+                        }}
+                      >
+                        <option value="">Sélectionner</option>
+                        {affaires
+                          .filter(
+                            (affaire) =>
+                              !["TERMINEE", "ANNULEE"].includes(
+                                affaire.statut
+                              )
+                          )
+                          .map((affaire) => (
+                            <option key={affaire.id} value={affaire.id}>
+                              {affaire.code_externe || affaire.reference} —{" "}
+                              {affaire.nom}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+
+                    <label className="field field-wide">
+                      <span className="toggle-filter">
+                        <input
+                          type="checkbox"
+                          checked={form.sortie_libre}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              sortie_libre: event.target.checked,
+                              affaire_id: event.target.checked
+                                ? ""
+                                : form.affaire_id,
+                            })
+                          }
+                        />
+                        Sortie libre sans affaire
+                      </span>
+                    </label>
+
+                    <label className="field">
+                      <span>Chargé d’affaires</span>
+                      <input
+                        maxLength={150}
+                        value={form.charge_affaires}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            charge_affaires: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Zone d’intervention</span>
+                      <input
+                        maxLength={180}
+                        value={form.zone_intervention}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            zone_intervention: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="field field-wide">
+                      <span>Véhicule</span>
+                      <input
+                        maxLength={120}
+                        placeholder="Ex. Camion 3, Renault Master..."
+                        value={form.vehicule}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            vehicule: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </>
                 )}
 
                 {typeSourceRequise && (

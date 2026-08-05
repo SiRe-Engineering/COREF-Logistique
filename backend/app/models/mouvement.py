@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -43,6 +44,11 @@ class MouvementStock(Base):
         index=True,
         nullable=True,
     )
+    affaire_id: Mapped[int | None] = mapped_column(
+        ForeignKey("affaires.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
     emplacement_source_id: Mapped[int | None] = mapped_column(
         ForeignKey("emplacements.id", ondelete="RESTRICT"),
         index=True,
@@ -57,6 +63,16 @@ class MouvementStock(Base):
     motif: Mapped[str | None] = mapped_column(String(150), nullable=True)
     commentaire: Mapped[str | None] = mapped_column(Text, nullable=True)
     operateur: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    zone_intervention: Mapped[str | None] = mapped_column(
+        String(180),
+        nullable=True,
+    )
+    charge_affaires: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    vehicule: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    sortie_libre: Mapped[bool] = mapped_column(Boolean, default=False)
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -65,6 +81,7 @@ class MouvementStock(Base):
 
     article = relationship("Article", lazy="joined")
     lot = relationship("LotBeton", lazy="joined")
+    affaire = relationship("Affaire", lazy="joined")
     emplacement_source = relationship(
         "Emplacement",
         foreign_keys=[emplacement_source_id],

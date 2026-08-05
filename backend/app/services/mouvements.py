@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.affaire import Affaire
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
@@ -59,6 +60,36 @@ def _charger_lot(
     return lot
 
 
+def _charger_affaire(
+    db: Session,
+    affaire_id: int | None,
+    sortie_libre: bool,
+    type_mouvement: str,
+) -> Affaire | None:
+    if type_mouvement != "SORTIE":
+        return db.get(Affaire, affaire_id) if affaire_id else None
+
+    if affaire_id is None:
+        if sortie_libre:
+            return None
+        raise HTTPException(
+            status_code=422,
+            detail="Une sortie exige une affaire ou le mode sortie libre.",
+        )
+
+    affaire = db.get(Affaire, affaire_id)
+    if affaire is None or not affaire.actif:
+        raise HTTPException(status_code=404, detail="Affaire introuvable.")
+
+    if affaire.statut in {"TERMINEE", "ANNULEE"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Cette affaire n’accepte plus de nouvelles sorties.",
+        )
+
+    return affaire
+
+
 def _charger_emplacement(
     db: Session,
     emplacement_id: int | None,
@@ -97,7 +128,6 @@ def _charger_stock_verrouille(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Aucun stock n’existe dans l’emplacement source.",
             )
-
         stock = Stock(
             article_id=article_id,
             emplacement_id=emplacement_id,
@@ -131,7 +161,6 @@ def _charger_stock_lot_verrouille(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Ce lot n’est pas présent dans l’emplacement source.",
             )
-
         stock_lot = StockLot(
             lot_id=lot_id,
             emplacement_id=emplacement_id,
@@ -163,6 +192,12 @@ def executer_mouvement(
 ) -> MouvementStock:
     article = _charger_article(db, payload.article_id)
     lot = _charger_lot(db, article, payload.lot_id)
+    affaire = _charger_affaire(
+        db,
+        payload.affaire_id,
+        payload.sortie_libre,
+        payload.type,
+    )
 
     _charger_emplacement(
         db,
@@ -174,6 +209,13 @@ def executer_mouvement(
         payload.emplacement_destination_id,
         "de destination",
     )
+
+    donnees = payload.model_dump()
+    if affaire is not None:
+        if not donnees.get("charge_affaires"):
+            donnees["charge_affaires"] = affaire.charge_affaires
+        if not donnees.get("zone_intervention"):
+            donnees["zone_intervention"] = affaire.zone_intervention
 
     type_mouvement = payload.type
     quantite = payload.quantite
@@ -229,7 +271,6 @@ def executer_mouvement(
                     payload.emplacement_destination_id,
                 ]
             )
-
             stocks = {}
             for emplacement_id in ids:
                 stocks[emplacement_id] = _charger_stock_verrouille(
@@ -269,7 +310,7 @@ def executer_mouvement(
                 _retirer(source_lot, quantite, "du lot")
                 destination_lot.quantite_physique += quantite
 
-        mouvement = MouvementStock(**payload.model_dump())
+        mouvement = MouvementStock(**donnees)
         db.add(mouvement)
         db.commit()
         db.refresh(mouvement)

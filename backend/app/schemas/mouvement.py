@@ -40,19 +40,35 @@ class LotMouvementRead(BaseModel):
     date_peremption: date | None = None
 
 
+class AffaireMouvementRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reference: str
+    code_externe: str | None
+    nom: str
+    client: str | None
+    site: str | None
+
+
 class MouvementCreate(BaseModel):
     type: TypeMouvement
     article_id: int
     lot_id: int | None = None
+    affaire_id: int | None = None
     emplacement_source_id: int | None = None
     emplacement_destination_id: int | None = None
     quantite: Decimal = Field(gt=0)
     motif: str | None = Field(default=None, max_length=150)
     commentaire: str | None = None
     operateur: str | None = Field(default=None, max_length=120)
+    zone_intervention: str | None = Field(default=None, max_length=180)
+    charge_affaires: str | None = Field(default=None, max_length=150)
+    vehicule: str | None = Field(default=None, max_length=120)
+    sortie_libre: bool = False
 
     @model_validator(mode="after")
-    def valider_emplacements(self):
+    def valider_mouvement(self):
         if self.type in {
             "ENTREE",
             "RETOUR",
@@ -79,6 +95,12 @@ class MouvementCreate(BaseModel):
                     "La source et la destination doivent être différentes."
                 )
 
+        if self.type == "SORTIE":
+            if self.affaire_id is None and not self.sortie_libre:
+                raise ValueError(
+                    "Une sortie doit être rattachée à une affaire ou déclarée libre."
+                )
+
         return self
 
 
@@ -90,14 +112,20 @@ class MouvementRead(BaseModel):
     type: str
     article_id: int
     lot_id: int | None
+    affaire_id: int | None
     emplacement_source_id: int | None
     emplacement_destination_id: int | None
     quantite: Decimal
     motif: str | None
     commentaire: str | None
     operateur: str | None
+    zone_intervention: str | None
+    charge_affaires: str | None
+    vehicule: str | None
+    sortie_libre: bool
     date_creation: datetime
     article: ArticleMouvementRead
     lot: LotMouvementRead | None
+    affaire: AffaireMouvementRead | None
     emplacement_source: EmplacementMouvementRead | None
     emplacement_destination: EmplacementMouvementRead | None

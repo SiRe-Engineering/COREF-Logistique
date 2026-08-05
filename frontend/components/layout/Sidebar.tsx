@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  BriefcaseBusiness,
   ClipboardCheck,
   Construction,
   FlaskConical,
@@ -24,6 +25,7 @@ const navigation = [
   { href: "/stocks", label: "Stocks", icon: Warehouse },
   { href: "/mouvements", label: "Mouvements", icon: Boxes },
   { href: "#", label: "Inventaires", icon: ClipboardCheck, disabled: true },
+  { href: "/affaires", label: "Affaires", icon: BriefcaseBusiness },
   { href: "/lots-beton", label: "Lots béton", icon: FlaskConical },
   { href: "#", label: "Matériels", icon: Hammer, disabled: true },
   { href: "#", label: "Moules", icon: Construction, disabled: true },
