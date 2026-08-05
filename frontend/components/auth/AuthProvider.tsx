@@ -25,9 +25,6 @@ type AuthContextValue = {
   deconnecter: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-
 type ApiErrorDetail =
   | string
   | Array<{
@@ -37,10 +34,10 @@ type ApiErrorDetail =
   | null
   | undefined;
 
+const AuthContext = createContext<AuthContextValue | null>(null);
+
 function messageErreur(detail: ApiErrorDetail) {
-  if (typeof detail === "string") {
-    return detail;
-  }
+  if (typeof detail === "string") return detail;
 
   if (Array.isArray(detail)) {
     const messages = detail
@@ -51,22 +48,17 @@ function messageErreur(detail: ApiErrorDetail) {
               .join(" > ")
           : "";
 
-        if (champ && erreur.msg) {
-          return `${champ} : ${erreur.msg}`;
-        }
-
-        return erreur.msg ?? null;
+        return champ && erreur.msg
+          ? `${champ} : ${erreur.msg}`
+          : erreur.msg ?? null;
       })
       .filter((message): message is string => Boolean(message));
 
-    if (messages.length > 0) {
-      return messages.join(" · ");
-    }
+    if (messages.length > 0) return messages.join(" · ");
   }
 
   return "Connexion impossible.";
 }
-
 
 export function useAuth() {
   const contexte = useContext(AuthContext);
@@ -79,7 +71,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [utilisateur, setUtilisateur] = useState<Utilisateur | null>(null);
   const [chargement, setChargement] = useState(true);
-  const [email, setEmail] = useState("admin@coref.fr");
+  const [email, setEmail] = useState("contact@sire-engineering.fr");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
 
@@ -189,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           </form>
 
           <small>
-            Compte initial : admin@coref.fr
+            Compte technique initial : contact@sire-engineering.fr
           </small>
         </section>
       </main>

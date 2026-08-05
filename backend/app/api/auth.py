@@ -22,19 +22,30 @@ from app.schemas.utilisateur import (
 router = APIRouter(prefix="/api/auth", tags=["Authentification"])
 
 
-def initialiser_administrateur(db: Session) -> None:
-    administrateur = db.scalar(
-        select(Utilisateur).where(
-            Utilisateur.email == "admin@coref.fr"
-        )
+COMPTES_INITIAUX = {
+    "contact@sire-engineering.fr": "Sire-2026!",
+    "simon.goubet@coref.fr": "Coref-2026!",
+}
+
+
+def initialiser_comptes(db: Session) -> None:
+    comptes = list(
+        db.scalars(
+            select(Utilisateur).where(
+                Utilisateur.email.in_(COMPTES_INITIAUX)
+            )
+        ).all()
     )
-    if (
-        administrateur is not None
-        and administrateur.mot_de_passe_hash == "INITIALISATION_REQUISE"
-    ):
-        administrateur.mot_de_passe_hash = hacher_mot_de_passe(
-            "Coref-2026!"
-        )
+
+    modification = False
+    for utilisateur in comptes:
+        if utilisateur.mot_de_passe_hash == "INITIALISATION_REQUISE":
+            utilisateur.mot_de_passe_hash = hacher_mot_de_passe(
+                COMPTES_INITIAUX[utilisateur.email]
+            )
+            modification = True
+
+    if modification:
         db.commit()
 
 
@@ -43,7 +54,7 @@ def connexion(
     payload: LoginRequest,
     db: Session = Depends(get_db),
 ) -> LoginResponse:
-    initialiser_administrateur(db)
+    initialiser_comptes(db)
 
     utilisateur = db.scalar(
         select(Utilisateur).where(

@@ -25,6 +25,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const { utilisateur } = useAuth();
 
+  const peutGererUtilisateurs = [
+    "ADMINISTRATEUR_TECHNIQUE",
+    "ADMINISTRATEUR_COREF",
+  ].includes(utilisateur.role);
+
   const navigation = [
     { href: "/", label: "Tableau de bord", icon: Gauge },
     { href: "/articles", label: "Articles", icon: PackageSearch },
@@ -39,7 +44,7 @@ export function Sidebar() {
     { href: "#", label: "Moules", icon: Construction, disabled: true },
     { href: "#", label: "Véhicules", icon: Truck, disabled: true },
     { href: "/emplacements", label: "Emplacements", icon: MapPin },
-    ...(utilisateur.role === "ADMINISTRATEUR"
+    ...(peutGererUtilisateurs
       ? [
           {
             href: "/administration/utilisateurs",
@@ -48,7 +53,16 @@ export function Sidebar() {
           },
         ]
       : []),
-    { href: "#", label: "Administration", icon: Settings, disabled: true },
+    ...(utilisateur.role === "ADMINISTRATEUR_TECHNIQUE"
+      ? [
+          {
+            href: "#",
+            label: "Système",
+            icon: Settings,
+            disabled: true,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -94,7 +108,9 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <span className="system-dot" />
-        Session sécurisée
+        {utilisateur.type_compte === "TECHNIQUE"
+          ? "Administration technique"
+          : "Espace COREF"}
       </div>
     </aside>
   );

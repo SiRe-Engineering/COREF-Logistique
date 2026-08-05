@@ -11,6 +11,8 @@ class Utilisateur(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nom_complet: Mapped[str] = mapped_column(String(150))
+    prenom: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    nom: Mapped[str | None] = mapped_column(String(100), nullable=True)
     email: Mapped[str] = mapped_column(
         String(180),
         unique=True,
@@ -18,6 +20,20 @@ class Utilisateur(Base):
     )
     mot_de_passe_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(50), index=True)
+    type_compte: Mapped[str] = mapped_column(
+        String(30),
+        default="METIER",
+        index=True,
+    )
+    entreprise: Mapped[str] = mapped_column(
+        String(150),
+        default="COREF",
+        index=True,
+    )
+    fonction: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
     actif: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

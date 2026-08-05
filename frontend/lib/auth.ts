@@ -1,8 +1,13 @@
 export type Utilisateur = {
   id: number;
   nom_complet: string;
+  prenom: string | null;
+  nom: string | null;
   email: string;
   role: string;
+  type_compte: string;
+  entreprise: string;
+  fonction: string | null;
   actif: boolean;
 };
 

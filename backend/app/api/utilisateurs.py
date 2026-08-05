@@ -15,19 +15,39 @@ from app.schemas.utilisateur import (
 
 router = APIRouter(prefix="/api/utilisateurs", tags=["Utilisateurs"])
 
-administrateur_requis = exiger_roles("ADMINISTRATEUR")
+gestion_utilisateurs_requise = exiger_roles(
+    "ADMINISTRATEUR_TECHNIQUE",
+    "ADMINISTRATEUR_COREF",
+)
+
+
+def nom_affiche(payload: UtilisateurCreate) -> str:
+    if payload.type_compte == "TECHNIQUE":
+        return (payload.nom_complet or "").strip()
+
+    return f"{payload.prenom.strip()} {payload.nom.strip()}"
 
 
 @router.get("", response_model=list[UtilisateurRead])
 def lister_utilisateurs(
     db: Session = Depends(get_db),
-    _: Utilisateur = Depends(administrateur_requis),
+    administrateur: Utilisateur = Depends(
+        gestion_utilisateurs_requise
+    ),
 ) -> list[Utilisateur]:
-    return list(
-        db.scalars(
-            select(Utilisateur).order_by(Utilisateur.nom_complet)
-        ).all()
+    requete = select(Utilisateur).order_by(
+        Utilisateur.entreprise,
+        Utilisateur.nom_complet,
     )
+
+    # Un administrateur COREF ne voit pas les comptes techniques.
+    if administrateur.role == "ADMINISTRATEUR_COREF":
+        requete = requete.where(
+            Utilisateur.type_compte == "METIER",
+            Utilisateur.entreprise == "COREF",
+        )
+
+    return list(db.scalars(requete).all())
 
 
 @router.post(
@@ -38,13 +58,36 @@ def lister_utilisateurs(
 def creer_utilisateur(
     payload: UtilisateurCreate,
     db: Session = Depends(get_db),
-    _: Utilisateur = Depends(administrateur_requis),
+    administrateur: Utilisateur = Depends(
+        gestion_utilisateurs_requise
+    ),
 ) -> Utilisateur:
+    if (
+        administrateur.role == "ADMINISTRATEUR_COREF"
+        and (
+            payload.type_compte != "METIER"
+            or payload.entreprise.upper() != "COREF"
+            or payload.role == "ADMINISTRATEUR_TECHNIQUE"
+        )
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Un administrateur COREF ne peut créer que des comptes "
+                "métier COREF."
+            ),
+        )
+
     utilisateur = Utilisateur(
-        nom_complet=payload.nom_complet.strip(),
+        nom_complet=nom_affiche(payload),
+        prenom=payload.prenom.strip() if payload.prenom else None,
+        nom=payload.nom.strip() if payload.nom else None,
         email=payload.email.lower().strip(),
         mot_de_passe_hash=hacher_mot_de_passe(payload.mot_de_passe),
         role=payload.role,
+        type_compte=payload.type_compte,
+        entreprise=payload.entreprise.strip(),
+        fonction=payload.fonction,
     )
     db.add(utilisateur)
 
@@ -66,13 +109,27 @@ def modifier_utilisateur(
     utilisateur_id: int,
     payload: UtilisateurUpdate,
     db: Session = Depends(get_db),
-    _: Utilisateur = Depends(administrateur_requis),
+    administrateur: Utilisateur = Depends(
+        gestion_utilisateurs_requise
+    ),
 ) -> Utilisateur:
     utilisateur = db.get(Utilisateur, utilisateur_id)
     if utilisateur is None:
         raise HTTPException(
             status_code=404,
             detail="Utilisateur introuvable.",
+        )
+
+    if (
+        administrateur.role == "ADMINISTRATEUR_COREF"
+        and (
+            utilisateur.type_compte == "TECHNIQUE"
+            or utilisateur.entreprise != "COREF"
+        )
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Ce compte est réservé à l’administration technique.",
         )
 
     donnees = payload.model_dump(exclude_unset=True)
@@ -82,6 +139,15 @@ def modifier_utilisateur(
         if champ == "email" and valeur is not None:
             valeur = valeur.lower().strip()
         setattr(utilisateur, champ, valeur)
+
+    if utilisateur.type_compte == "METIER":
+        if utilisateur.prenom and utilisateur.nom:
+            utilisateur.nom_complet = (
+                f"{utilisateur.prenom.strip()} "
+                f"{utilisateur.nom.strip()}"
+            )
+    elif payload.nom_complet:
+        utilisateur.nom_complet = payload.nom_complet.strip()
 
     if mot_de_passe:
         utilisateur.mot_de_passe_hash = hacher_mot_de_passe(
