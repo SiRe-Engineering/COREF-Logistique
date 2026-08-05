@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import articles_router, health_router
+from app.api import articles_router, familles_router, health_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(familles_router)
 app.include_router(articles_router)
 
 
