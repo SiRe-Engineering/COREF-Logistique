@@ -7,7 +7,9 @@ from app.api import (
     emplacements_router,
     familles_router,
     health_router,
+    inventaires_router,
     lots_beton_router,
+    materiels_router,
     mouvements_router,
     stocks_router,
 )
@@ -32,6 +34,8 @@ app.include_router(emplacements_router)
 app.include_router(stocks_router)
 app.include_router(lots_beton_router)
 app.include_router(affaires_router)
+app.include_router(materiels_router)
+app.include_router(inventaires_router)
 app.include_router(mouvements_router)
 app.include_router(articles_router)
 

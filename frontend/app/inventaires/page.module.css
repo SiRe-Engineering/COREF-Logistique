@@ -1,0 +1,114 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  padding: 18px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.card:hover {
+  border-color: #98a2b3;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.cardHeader span,
+.card p,
+.progress span {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.progress {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.inventoryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.inventoryHeader p {
+  color: var(--muted);
+}
+
+.lines {
+  display: grid;
+  gap: 12px;
+}
+
+.line {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.line > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.line > div:first-child span {
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.quantities {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.quantities label {
+  display: grid;
+  gap: 5px;
+}
+
+.quantities span {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.quantities input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+@media (max-width: 900px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .cards,
+  .quantities {
+    grid-template-columns: 1fr;
+  }
+}

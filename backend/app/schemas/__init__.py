@@ -18,6 +18,7 @@ from app.schemas.lot_beton import (
     LotBetonRead,
     LotBetonUpdate,
 )
+from app.schemas.materiel import MaterielCreate, MaterielRead, MaterielUpdate
 from app.schemas.mouvement import MouvementCreate, MouvementRead
 from app.schemas.stock import StockRead, StockResume, StockSet
 
@@ -37,6 +38,9 @@ __all__ = [
     "LotBetonCreate",
     "LotBetonRead",
     "LotBetonUpdate",
+    "MaterielCreate",
+    "MaterielRead",
+    "MaterielUpdate",
     "MouvementCreate",
     "MouvementRead",
     "SousFamilleCreate",
