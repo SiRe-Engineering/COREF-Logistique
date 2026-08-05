@@ -1,0 +1,46 @@
+.card {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.card > div:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.card span,
+.card small {
+  color: var(--muted);
+}
+
+.card span {
+  font-size: .73rem;
+  font-weight: 700;
+}
+
+.card strong {
+  overflow: hidden;
+  font-size: 1.35rem;
+  text-overflow: ellipsis;
+}
+
+.card small {
+  font-size: .7rem;
+}
+
+.icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--surface-muted);
+}

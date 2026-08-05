@@ -1,0 +1,53 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.badge > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.neutral {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.information {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.pending {
+  background: #fff7ed;
+  color: #c4320a;
+}
+
+.success {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.warning {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.danger {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.validation {
+  background: #f4f3ff;
+  color: #6938ef;
+}

@@ -1,0 +1,25 @@
+.empty {
+  display: grid;
+  min-height: 240px;
+  padding: 32px;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.empty p {
+  max-width: 480px;
+  margin: 7px 0 18px;
+  color: var(--muted);
+}
+
+.icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 13px;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--surface-muted);
+  color: var(--muted);
+}
