@@ -12,6 +12,7 @@ from app.schemas.famille import (
     SousFamilleRead,
     SousFamilleUpdate,
 )
+from app.schemas.stock import StockRead, StockResume, StockSet
 
 __all__ = [
     "ArticleCreate",
@@ -26,4 +27,7 @@ __all__ = [
     "SousFamilleCreate",
     "SousFamilleRead",
     "SousFamilleUpdate",
+    "StockRead",
+    "StockResume",
+    "StockSet",
 ]

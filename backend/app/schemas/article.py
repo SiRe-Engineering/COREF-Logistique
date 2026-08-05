@@ -18,6 +18,8 @@ class ArticleBase(BaseModel):
     sous_famille_id: int | None = None
     unite: str = Field(default="unité", min_length=1, max_length=30)
     stock_minimum: Decimal = Field(default=0, ge=0)
+    stock_maximum: Decimal = Field(default=0, ge=0)
+    seuil_alerte: Decimal = Field(default=0, ge=0)
 
     @field_validator("designation", "unite")
     @classmethod
@@ -41,6 +43,8 @@ class ArticleUpdate(BaseModel):
     sous_famille_id: int | None = None
     unite: str | None = Field(default=None, min_length=1, max_length=30)
     stock_minimum: Decimal | None = Field(default=None, ge=0)
+    stock_maximum: Decimal | None = Field(default=None, ge=0)
+    seuil_alerte: Decimal | None = Field(default=None, ge=0)
     actif: bool | None = None
 
     @field_validator("reference")

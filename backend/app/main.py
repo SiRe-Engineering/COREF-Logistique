@@ -6,6 +6,7 @@ from app.api import (
     emplacements_router,
     familles_router,
     health_router,
+    stocks_router,
 )
 from app.core.config import settings
 
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
+app.include_router(stocks_router)
 app.include_router(articles_router)
 
 

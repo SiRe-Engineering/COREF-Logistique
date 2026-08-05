@@ -20,7 +20,7 @@ const navigation = [
   { href: "/", label: "Tableau de bord", icon: Gauge },
   { href: "/articles", label: "Articles", icon: PackageSearch },
   { href: "#", label: "Familles", icon: Shapes, disabled: true },
-  { href: "#", label: "Stocks", icon: Warehouse, disabled: true },
+  { href: "/stocks", label: "Stocks", icon: Warehouse },
   { href: "#", label: "Mouvements", icon: Boxes, disabled: true },
   { href: "#", label: "Inventaires", icon: ClipboardCheck, disabled: true },
   { href: "#", label: "Matériels", icon: Hammer, disabled: true },

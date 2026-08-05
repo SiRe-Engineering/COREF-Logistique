@@ -21,7 +21,6 @@ class Article(Base):
     )
     designation: Mapped[str] = mapped_column(String(255), index=True)
 
-    # Colonnes historiques conservées temporairement pendant la transition.
     famille: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sous_famille: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
@@ -38,6 +37,8 @@ class Article(Base):
 
     unite: Mapped[str] = mapped_column(String(30), default="unité")
     stock_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
+    stock_maximum: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
+    seuil_alerte: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
     actif: Mapped[bool] = mapped_column(Boolean, default=True)
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

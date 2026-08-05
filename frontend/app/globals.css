@@ -631,87 +631,130 @@ select, .field input {
 }
 
 /* ===========================
-   Emplacements (Lot 07)
+   Stocks (Lot 08)
    =========================== */
 
-.locations-grid {
+.stock-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  margin-bottom: 20px;
 }
 
-.location-card {
-  min-height: 180px;
+.stock-metric {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 104px;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
 }
 
-.location-card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.location-card-header > div:last-child {
-  display: grid;
-  gap: 3px;
-}
-
-.location-card-header span {
-  color: var(--muted);
-  font-family: ui-monospace, monospace;
-  font-size: .75rem;
-}
-
-.location-icon {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
+.stock-metric > svg {
+  box-sizing: content-box;
+  padding: 10px;
   border-radius: 10px;
   background: #f2f4f7;
   color: #344054;
 }
 
-.location-children {
-  display: grid;
-  gap: 8px;
-  padding-top: 14px;
+.stock-metric-danger > svg {
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
-.location-child {
+.stock-metric div {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 9px;
-  border-radius: 7px;
-  background: var(--surface-muted);
-  font-size: .82rem;
+  gap: 5px;
 }
 
-.location-child code {
+.stock-metric span {
   color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+}
+
+.stock-metric strong {
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.stock-filters {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 260px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.toggle-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.toggle-filter input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.stock-article-cell {
+  display: grid;
+  gap: 7px;
+}
+
+.table-subtext {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
   font-size: .72rem;
 }
 
-.muted-text {
-  color: var(--muted);
-  font-size: .82rem;
+.empty-state > svg {
+  display: block;
+  margin: 0 auto 10px;
+}
+
+.empty-state strong,
+.empty-state span {
+  display: block;
+}
+
+.empty-state strong {
+  margin-bottom: 5px;
+  color: var(--text);
 }
 
 @media (max-width: 1050px) {
-  .locations-grid {
+  .stock-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stock-filters {
+    grid-template-columns: 1fr 240px;
+  }
+
+  .toggle-filter {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 620px) {
-  .locations-grid {
+  .stock-metrics,
+  .stock-filters {
     grid-template-columns: 1fr;
+  }
+
+  .toggle-filter {
+    grid-column: auto;
   }
 }
