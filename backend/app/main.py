@@ -6,6 +6,8 @@ from app.api import (
     emplacements_router,
     familles_router,
     health_router,
+    lots_beton_router,
+    mouvements_router,
     stocks_router,
 )
 from app.core.config import settings
@@ -27,6 +29,8 @@ app.include_router(health_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
 app.include_router(stocks_router)
+app.include_router(lots_beton_router)
+app.include_router(mouvements_router)
 app.include_router(articles_router)
 
 

@@ -12,6 +12,12 @@ from app.schemas.famille import (
     SousFamilleRead,
     SousFamilleUpdate,
 )
+from app.schemas.lot_beton import (
+    LotBetonCreate,
+    LotBetonRead,
+    LotBetonUpdate,
+)
+from app.schemas.mouvement import MouvementCreate, MouvementRead
 from app.schemas.stock import StockRead, StockResume, StockSet
 
 __all__ = [
@@ -24,6 +30,11 @@ __all__ = [
     "FamilleCreate",
     "FamilleRead",
     "FamilleUpdate",
+    "LotBetonCreate",
+    "LotBetonRead",
+    "LotBetonUpdate",
+    "MouvementCreate",
+    "MouvementRead",
     "SousFamilleCreate",
     "SousFamilleRead",
     "SousFamilleUpdate",
