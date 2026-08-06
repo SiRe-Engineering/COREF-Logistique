@@ -161,13 +161,13 @@ function progression(preparation: Preparation) {
 
 
 function tonStatutLigne(statut: string) {
-  if (["PREPAREE", "REMPLACEMENT_ACCEPTE", "EXPEDIEE"].includes(statut)) {
+  if (["PREPAREE", "EXPEDIEE"].includes(statut)) {
     return "success" as const;
   }
-  if (["PARTIELLE", "REMPLACEMENT_PROPOSE"].includes(statut)) {
+  if (statut === "PARTIELLE") {
     return "warning" as const;
   }
-  if (["INDISPONIBLE", "REMPLACEMENT_REFUSE"].includes(statut)) {
+  if (statut === "INDISPONIBLE") {
     return "danger" as const;
   }
   if (statut === "EN_PREPARATION") return "information" as const;
@@ -184,13 +184,9 @@ function tonStatutPreparation(statut: string) {
 function libelleStatutLigne(statut: string) {
   const libelles: Record<string, string> = {
     A_PREPARER: "À préparer",
-    EN_PREPARATION: "En préparation",
     PREPAREE: "Préparée",
     PARTIELLE: "Partielle",
     INDISPONIBLE: "Indisponible",
-    REMPLACEMENT_PROPOSE: "Remplacement proposé",
-    REMPLACEMENT_ACCEPTE: "Remplacement accepté",
-    REMPLACEMENT_REFUSE: "Remplacement refusé",
     EXPEDIEE: "Expédiée",
   };
 
@@ -502,8 +498,62 @@ export default function PreparationsPage() {
     await actualiserSelection(await response.json());
   }
 
-  async function saisirPreparee(ligne: Ligne, valeur: string) {
+  async function mettreAJourStatutLigne(
+    ligne: Ligne,
+    action: "COMPLETE" | "PARTIELLE" | "INDISPONIBLE" | "RESET"
+  ) {
     if (!selection) return;
+
+    let quantitePreparee = 0;
+    let statut = "A_PREPARER";
+    let motifEcart: string | null = null;
+
+    if (action === "COMPLETE") {
+      quantitePreparee = Number(ligne.quantite_demandee);
+      statut = "PREPAREE";
+    }
+
+    if (action === "PARTIELLE") {
+      const saisie = window.prompt(
+        `Quantité réellement préparée pour ${ligne.article.designation} :`,
+        ligne.quantite_preparee
+      );
+      if (saisie === null) return;
+
+      quantitePreparee = Number(saisie);
+      if (
+        !Number.isFinite(quantitePreparee) ||
+        quantitePreparee <= 0 ||
+        quantitePreparee >= Number(ligne.quantite_demandee)
+      ) {
+        setToast({
+          type: "error",
+          message:
+            "La quantité partielle doit être supérieure à zéro et inférieure à la quantité demandée.",
+        });
+        return;
+      }
+
+      const motif = window.prompt(
+        "Motif de l’écart (obligatoire) :",
+        ligne.motif_ecart ?? ""
+      );
+      if (!motif?.trim()) return;
+
+      statut = "PARTIELLE";
+      motifEcart = motif.trim();
+    }
+
+    if (action === "INDISPONIBLE") {
+      const motif = window.prompt(
+        "Pourquoi l’article est-il indisponible ?",
+        ligne.motif_ecart ?? ""
+      );
+      if (!motif?.trim()) return;
+
+      statut = "INDISPONIBLE";
+      motifEcart = motif.trim();
+    }
 
     const response = await fetch(
       `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}`,
@@ -511,14 +561,37 @@ export default function PreparationsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          quantite_preparee: Number(valeur),
+          quantite_preparee: quantitePreparee,
+          statut,
+          motif_ecart: motifEcart,
         }),
       }
     );
 
-    if (response.ok) {
-      await actualiserSelection(await response.json());
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      setToast({
+        type: "error",
+        message:
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Mise à jour impossible.",
+      });
+      return;
     }
+
+    await actualiserSelection(data);
+    setToast({
+      type: "success",
+      message:
+        action === "COMPLETE"
+          ? "Ligne marquée comme complète."
+          : action === "PARTIELLE"
+            ? "Préparation partielle enregistrée."
+            : action === "INDISPONIBLE"
+              ? "Article déclaré indisponible."
+              : "Ligne remise à préparer.",
+    });
   }
 
 
@@ -1028,7 +1101,6 @@ export default function PreparationsPage() {
                       <th>Lot</th>
                       <th>Emplacement</th>
                       <th>Demandé</th>
-                      <th>Préparé</th>
                       <th>Manquant</th>
                       <th>Commentaire</th>
                       {editable && <th aria-label="Actions" />}
@@ -1059,21 +1131,6 @@ export default function PreparationsPage() {
                           ).toLocaleString("fr-FR")}{" "}
                           {ligne.article.unite}
                         </td>
-                        <td className={styles.inputCell}>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            disabled={
-                              selection.statut !== "EN_PREPARATION"
-                            }
-                            defaultValue={ligne.quantite_preparee}
-                            onBlur={(event) =>
-                              saisirPreparee(ligne, event.target.value)
-                            }
-                          />
-                          <span>{ligne.article.unite}</span>
-                        </td>
                         <td className={styles.numberCell}>
                           {Number(
                             ligne.quantite_manquante
@@ -1089,17 +1146,74 @@ export default function PreparationsPage() {
                         {editable && (
                           <td>
                             <div className={styles.rowActions}>
+                              {selection.statut === "EN_PREPARATION" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className={styles.completeButton}
+                                    onClick={() =>
+                                      mettreAJourStatutLigne(
+                                        ligne,
+                                        "COMPLETE"
+                                      )
+                                    }
+                                    title="Marquer complète"
+                                    aria-label="Marquer la ligne complète"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.partialButton}
+                                    onClick={() =>
+                                      mettreAJourStatutLigne(
+                                        ligne,
+                                        "PARTIELLE"
+                                      )
+                                    }
+                                    title="Marquer partielle"
+                                    aria-label="Marquer la ligne partielle"
+                                  >
+                                    ½
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.unavailableButton}
+                                    onClick={() =>
+                                      mettreAJourStatutLigne(
+                                        ligne,
+                                        "INDISPONIBLE"
+                                      )
+                                    }
+                                    title="Marquer indisponible"
+                                    aria-label="Marquer l’article indisponible"
+                                  >
+                                    !
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.resetButton}
+                                    onClick={() =>
+                                      mettreAJourStatutLigne(ligne, "RESET")
+                                    }
+                                    title="Remettre à préparer"
+                                    aria-label="Remettre la ligne à préparer"
+                                  >
+                                    ↺
+                                  </button>
+                                </>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => editerLigne(ligne)}
-                                title="Modifier"
+                                title="Modifier le besoin"
                               >
                                 <Pencil size={15} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => supprimerLigne(ligne)}
-                                title="Supprimer"
+                                title="Supprimer la ligne"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1111,7 +1225,7 @@ export default function PreparationsPage() {
                     {selection.lignes.length === 0 && (
                       <tr>
                         <td
-                          colSpan={editable ? 9 : 8}
+                          colSpan={editable ? 8 : 7}
                           className={styles.emptyTable}
                         >
                           Aucun article ajouté.

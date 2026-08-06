@@ -58,7 +58,9 @@ class LignePreparationUpdate(BaseModel):
     emplacement_source_id: int | None = None
     quantite_demandee: Decimal | None = Field(default=None, gt=0)
     quantite_preparee: Decimal | None = Field(default=None, ge=0)
+    statut: str | None = Field(default=None, max_length=30)
     commentaire: str | None = Field(default=None, max_length=255)
+    motif_ecart: str | None = Field(default=None, max_length=500)
 
 
 class LignePreparationRead(BaseModel):
@@ -70,8 +72,12 @@ class LignePreparationRead(BaseModel):
     emplacement_source_id: int | None
     quantite_demandee: Decimal
     quantite_preparee: Decimal
+    quantite_manquante: Decimal
     statut: str
     commentaire: str | None
+    motif_ecart: str | None
+    date_debut_preparation: datetime | None
+    date_fin_preparation: datetime | None
     article: ArticlePreparationRead
     lot: LotPreparationRead | None
     emplacement_source: EmplacementPreparationRead | None

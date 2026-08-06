@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -30,6 +31,38 @@ from app.services.reservations import (
 router = APIRouter(prefix="/api/preparations", tags=["Préparations"])
 
 STATUTS_EDITABLES = {"BROUILLON", "VALIDEE", "EN_PREPARATION"}
+STATUTS_LIGNE_AUTORISES = {
+    "A_PREPARER",
+    "PREPAREE",
+    "PARTIELLE",
+    "INDISPONIBLE",
+    "EXPEDIEE",
+}
+
+
+def recalculer_ligne(ligne: LignePreparation) -> None:
+    ligne.quantite_manquante = max(
+        ligne.quantite_demandee - ligne.quantite_preparee,
+        Decimal("0"),
+    )
+
+    if ligne.statut == "EXPEDIEE":
+        return
+
+    if ligne.quantite_preparee >= ligne.quantite_demandee:
+        ligne.statut = "PREPAREE"
+        ligne.quantite_preparee = ligne.quantite_demandee
+        ligne.quantite_manquante = Decimal("0")
+        ligne.motif_ecart = None
+        ligne.date_fin_preparation = datetime.now(timezone.utc)
+    elif ligne.quantite_preparee > 0:
+        ligne.statut = "PARTIELLE"
+        ligne.date_fin_preparation = None
+    elif ligne.statut != "INDISPONIBLE":
+        ligne.statut = "A_PREPARER"
+        ligne.date_fin_preparation = None
+
+
 
 
 def charger_preparation(db: Session, preparation_id: int) -> Preparation:
@@ -210,7 +243,12 @@ def ajouter_ligne(
                 detail="Emplacement source introuvable.",
             )
 
-    ligne = LignePreparation(**payload.model_dump())
+    ligne = LignePreparation(
+        **payload.model_dump(),
+        quantite_preparee=Decimal("0"),
+        quantite_manquante=payload.quantite_demandee,
+        statut="A_PREPARER",
+    )
     preparation.lignes.append(ligne)
     db.flush()
 
@@ -270,8 +308,52 @@ def modifier_ligne(
     if reservation_active and reservation_a_recalculer:
         liberer_reservation_ligne(db, ligne)
 
+    statut_demande = donnees.get("statut")
+    if (
+        statut_demande is not None
+        and statut_demande not in STATUTS_LIGNE_AUTORISES
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Statut de ligne de préparation invalide.",
+        )
+
     for champ, valeur in donnees.items():
         setattr(ligne, champ, valeur)
+
+    if (
+        "quantite_preparee" in donnees
+        or "quantite_demandee" in donnees
+        or "statut" in donnees
+    ):
+        if (
+            ligne.quantite_preparee > 0
+            and ligne.date_debut_preparation is None
+        ):
+            ligne.date_debut_preparation = datetime.now(timezone.utc)
+
+        if ligne.statut == "INDISPONIBLE":
+            ligne.quantite_preparee = Decimal("0")
+            ligne.quantite_manquante = ligne.quantite_demandee
+            ligne.date_fin_preparation = None
+        else:
+            recalculer_ligne(ligne)
+
+    if (
+        ligne.statut in {"PARTIELLE", "INDISPONIBLE"}
+        and not (ligne.motif_ecart or "").strip()
+    ):
+        db.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Un motif est obligatoire pour une ligne "
+                "partielle ou indisponible."
+            ),
+        )
+
+    if ligne.statut in {"A_PREPARER", "PREPAREE"}:
+        ligne.motif_ecart = None
 
     if ligne.lot_id is not None:
         lot = db.get(LotBeton, ligne.lot_id)
@@ -408,7 +490,10 @@ def valider_preparation(
     try:
         for ligne in preparation.lignes:
             synchroniser_reservation_ligne(db, preparation, ligne)
-            ligne.statut = "RESERVEE"
+            ligne.statut = "A_PREPARER"
+            ligne.quantite_preparee = Decimal("0")
+            ligne.quantite_manquante = ligne.quantite_demandee
+            ligne.motif_ecart = None
 
         preparation.statut = "VALIDEE"
         preparation.date_validation = datetime.now(timezone.utc)
@@ -467,7 +552,7 @@ def terminer_preparation(
     incompletes = [
         ligne
         for ligne in preparation.lignes
-        if ligne.quantite_preparee < ligne.quantite_demandee
+        if ligne.statut != "PREPAREE"
     ]
     if incompletes:
         raise HTTPException(

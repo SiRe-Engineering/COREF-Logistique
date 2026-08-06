@@ -76,6 +76,20 @@ class LignePreparation(Base):
             "quantite_preparee >= 0",
             name="ck_lignes_preparation_quantite_preparee_positive",
         ),
+        CheckConstraint(
+            "quantite_manquante >= 0",
+            name="ck_lignes_preparation_quantite_manquante_positive",
+        ),
+        CheckConstraint(
+            "statut IN ("
+            "'A_PREPARER', "
+            "'PREPAREE', "
+            "'PARTIELLE', "
+            "'INDISPONIBLE', "
+            "'EXPEDIEE'"
+            ")",
+            name="ck_lignes_preparation_statut_execution",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -99,8 +113,28 @@ class LignePreparation(Base):
         Numeric(14, 3),
         default=0,
     )
-    statut: Mapped[str] = mapped_column(String(30), default="A_PREPARER")
+    quantite_manquante: Mapped[Decimal] = mapped_column(
+        Numeric(14, 3),
+        default=0,
+    )
+    statut: Mapped[str] = mapped_column(
+        String(30),
+        default="A_PREPARER",
+        index=True,
+    )
     commentaire: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    motif_ecart: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+    date_debut_preparation: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    date_fin_preparation: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     preparation = relationship("Preparation", back_populates="lignes")
     article = relationship("Article", lazy="joined")

@@ -144,7 +144,7 @@
 
 .linesTable {
   width: 100%;
-  min-width: 1120px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -187,25 +187,6 @@
   text-align: right !important;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-.inputCell {
-  display: flex;
-  align-items: center;
-  min-width: 150px;
-  gap: 7px;
-}
-
-.inputCell input {
-  width: 92px;
-  padding: 8px 9px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-}
-
-.inputCell span {
-  color: var(--muted);
-  font-size: .75rem;
 }
 
 .commentCell {
@@ -277,4 +258,42 @@
   .identity {
     flex-direction: column;
   }
+}
+
+
+.rowActions {
+  min-width: 220px;
+  flex-wrap: wrap;
+}
+
+.completeButton,
+.partialButton,
+.unavailableButton,
+.resetButton {
+  font-size: .9rem;
+  font-weight: 800;
+}
+
+.completeButton {
+  border-color: #a6f4c5 !important;
+  background: #ecfdf3 !important;
+  color: #027a48;
+}
+
+.partialButton {
+  border-color: #fedf89 !important;
+  background: #fffaeb !important;
+  color: #b54708;
+}
+
+.unavailableButton {
+  border-color: #fda29b !important;
+  background: #fef3f2 !important;
+  color: #b42318;
+}
+
+.resetButton {
+  border-color: #d0d5dd !important;
+  background: #f9fafb !important;
+  color: #475467;
 }
