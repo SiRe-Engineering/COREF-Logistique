@@ -27,6 +27,7 @@ class EmplacementStockRead(BaseModel):
 
 class StockSet(BaseModel):
     article_id: int
+    lot_id: int | None = None
     emplacement_id: int
     quantite_physique: Decimal = Field(ge=0)
 

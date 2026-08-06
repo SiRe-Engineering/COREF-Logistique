@@ -59,6 +59,23 @@ class LotBeton(Base):
     )
     commentaire: Mapped[str | None] = mapped_column(Text, nullable=True)
     actif: Mapped[bool] = mapped_column(Boolean, default=True)
+    supprime: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+    )
+    date_suppression: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    supprime_par: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    motif_suppression: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -10,8 +10,11 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { entetesAuthentifiees } from "@/lib/auth";
 import { Toast } from "@/components/ui/Toast";
 import styles from "./page.module.css";
 
@@ -120,6 +123,9 @@ function TypeIcon({ type }: { type: string }) {
 }
 
 export default function MouvementsPage() {
+  const { utilisateur } = useAuth();
+  const adminTechnique =
+    utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [mouvements, setMouvements] = useState<Mouvement[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
@@ -301,6 +307,59 @@ export default function MouvementsPage() {
     }
   }
 
+
+  async function supprimerMouvement(mouvement: Mouvement) {
+    const motif = window.prompt(
+      `Motif d’annulation de ${mouvement.reference} (obligatoire) :`
+    );
+    if (!motif?.trim()) return;
+
+    if (
+      !window.confirm(
+        `Annuler l’écriture ${mouvement.reference} ?\n\n` +
+          "Son effet sera automatiquement contre-passé dans le stock."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/mouvements/${mouvement.id}`,
+        {
+          method: "DELETE",
+          headers: entetesAuthentifiees({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ motif: motif.trim() }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Annulation impossible."
+        );
+      }
+
+      setToast({
+        type: "success",
+        message: `${mouvement.reference} annulé et contre-passé.`,
+      });
+      await charger();
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Annulation impossible.",
+      });
+    }
+  }
+
   return (
     <div>
       <div className="breadcrumb">Exploitation / Mouvements</div>
@@ -398,6 +457,7 @@ export default function MouvementsPage() {
                 <th>Quantité</th>
                 <th>Affaire</th>
                 <th>Motif</th>
+                {adminTechnique && <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
@@ -466,12 +526,24 @@ export default function MouvementsPage() {
                         : "—"}
                   </td>
                   <td>{mouvement.motif ?? "—"}</td>
+                  {adminTechnique && (
+                    <td>
+                      <button
+                        type="button"
+                        className="icon-button danger"
+                        onClick={() => supprimerMouvement(mouvement)}
+                        title="Annuler cette écriture"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
 
               {mouvementsFiltres.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-state">
+                  <td colSpan={adminTechnique ? 9 : 8} className="empty-state">
                     <History size={24} />
                     <strong>Aucun mouvement</strong>
                     <span>

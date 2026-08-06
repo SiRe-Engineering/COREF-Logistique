@@ -34,6 +34,10 @@ class StockLotRead(BaseModel):
     emplacement: EmplacementLotRead
 
 
+class SuppressionLotCreate(BaseModel):
+    motif: str = Field(min_length=5, max_length=1000)
+
+
 class LotBetonCreate(BaseModel):
     article_id: int
     numero_lot_fournisseur: str = Field(min_length=1, max_length=120)
@@ -82,6 +86,10 @@ class LotBetonRead(BaseModel):
     fds_reference: str | None
     commentaire: str | None
     actif: bool
+    supprime: bool
+    date_suppression: datetime | None
+    supprime_par: str | None
+    motif_suppression: str | None
     date_creation: datetime
     date_modification: datetime
     article: ArticleLotRead

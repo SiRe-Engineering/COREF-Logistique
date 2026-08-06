@@ -124,8 +124,17 @@ class MouvementRead(BaseModel):
     vehicule: str | None
     sortie_libre: bool
     date_creation: datetime
+    annule: bool
+    date_annulation: datetime | None
+    annule_par: str | None
+    motif_annulation: str | None
     article: ArticleMouvementRead
     lot: LotMouvementRead | None
     affaire: AffaireMouvementRead | None
     emplacement_source: EmplacementMouvementRead | None
     emplacement_destination: EmplacementMouvementRead | None
+
+
+
+class AnnulationMouvementCreate(BaseModel):
+    motif: str = Field(min_length=5, max_length=1000)

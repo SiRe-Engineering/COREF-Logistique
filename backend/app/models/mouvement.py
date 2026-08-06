@@ -73,6 +73,23 @@ class MouvementStock(Base):
     )
     vehicule: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sortie_libre: Mapped[bool] = mapped_column(Boolean, default=False)
+    annule: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+    )
+    date_annulation: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    annule_par: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    motif_annulation: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

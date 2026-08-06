@@ -9,8 +9,11 @@ import {
   Plus,
   Search,
   TriangleAlert,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { entetesAuthentifiees } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import styles from "./page.module.css";
@@ -93,6 +96,9 @@ function statutPeremption(datePeremption: string) {
 }
 
 export default function LotsBetonPage() {
+  const { utilisateur } = useAuth();
+  const adminTechnique =
+    utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [lots, setLots] = useState<Lot[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [recherche, setRecherche] = useState("");
@@ -211,6 +217,59 @@ export default function LotsBetonPage() {
     }
   }
 
+
+  async function supprimerLot(lot: Lot) {
+    const motif = window.prompt(
+      `Motif de suppression de ${lot.reference_interne} (obligatoire) :`
+    );
+    if (!motif?.trim()) return;
+
+    if (
+      !window.confirm(
+        `Supprimer le lot ${lot.reference_interne} ?\n\n` +
+          "Cette action l’archive définitivement de l’interface."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/lots-beton/${lot.id}`,
+        {
+          method: "DELETE",
+          headers: entetesAuthentifiees({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ motif: motif.trim() }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Suppression impossible."
+        );
+      }
+
+      setToast({
+        type: "success",
+        message: `${lot.reference_interne} supprimé.`,
+      });
+      await charger();
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Suppression impossible.",
+      });
+    }
+  }
+
   return (
     <div>
       <div className="breadcrumb">Qualité / Lots béton</div>
@@ -304,6 +363,7 @@ export default function LotsBetonPage() {
                 <th>Stock disponible</th>
                 <th>Documents</th>
                 <th>Statut</th>
+                {adminTechnique && <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
@@ -373,13 +433,25 @@ export default function LotsBetonPage() {
                     <td>
                       <Badge tone={statut.tone}>{statut.label}</Badge>
                     </td>
+                    {adminTechnique && (
+                      <td>
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          onClick={() => supprimerLot(lot)}
+                          title="Supprimer ce lot"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
 
               {lotsFiltres.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-state">
+                  <td colSpan={adminTechnique ? 9 : 8} className="empty-state">
                     <TriangleAlert size={24} />
                     <strong>Aucun lot béton</strong>
                     <span>Créez le premier lot fournisseur.</span>

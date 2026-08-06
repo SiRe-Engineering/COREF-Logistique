@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -316,6 +317,131 @@ def executer_mouvement(
         db.refresh(mouvement)
         return mouvement
 
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+
+
+def annuler_mouvement(
+    db: Session,
+    mouvement: MouvementStock,
+    *,
+    annule_par: str,
+    motif: str,
+) -> MouvementStock:
+    if mouvement.annule:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cette écriture est déjà annulée.",
+        )
+
+    article = _charger_article(db, mouvement.article_id)
+    lot = (
+        db.get(LotBeton, mouvement.lot_id)
+        if mouvement.lot_id is not None
+        else None
+    )
+    quantite = mouvement.quantite
+
+    try:
+        if mouvement.type in {
+            "ENTREE",
+            "RETOUR",
+            "AJUSTEMENT_POSITIF",
+        }:
+            destination = _charger_stock_verrouille(
+                db,
+                article.id,
+                mouvement.emplacement_destination_id,
+                creer=False,
+            )
+            _retirer(destination, quantite, "article")
+
+            if lot is not None:
+                destination_lot = _charger_stock_lot_verrouille(
+                    db,
+                    lot.id,
+                    mouvement.emplacement_destination_id,
+                    creer=False,
+                )
+                _retirer(destination_lot, quantite, "du lot")
+
+        elif mouvement.type in {
+            "SORTIE",
+            "AJUSTEMENT_NEGATIF",
+        }:
+            source = _charger_stock_verrouille(
+                db,
+                article.id,
+                mouvement.emplacement_source_id,
+                creer=True,
+            )
+            source.quantite_physique += quantite
+
+            if lot is not None:
+                source_lot = _charger_stock_lot_verrouille(
+                    db,
+                    lot.id,
+                    mouvement.emplacement_source_id,
+                    creer=True,
+                )
+                source_lot.quantite_physique += quantite
+
+        elif mouvement.type == "TRANSFERT":
+            destination = _charger_stock_verrouille(
+                db,
+                article.id,
+                mouvement.emplacement_destination_id,
+                creer=False,
+            )
+            _retirer(destination, quantite, "article destination")
+
+            source = _charger_stock_verrouille(
+                db,
+                article.id,
+                mouvement.emplacement_source_id,
+                creer=True,
+            )
+            source.quantite_physique += quantite
+
+            if lot is not None:
+                destination_lot = _charger_stock_lot_verrouille(
+                    db,
+                    lot.id,
+                    mouvement.emplacement_destination_id,
+                    creer=False,
+                )
+                _retirer(
+                    destination_lot,
+                    quantite,
+                    "du lot destination",
+                )
+
+                source_lot = _charger_stock_lot_verrouille(
+                    db,
+                    lot.id,
+                    mouvement.emplacement_source_id,
+                    creer=True,
+                )
+                source_lot.quantite_physique += quantite
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Type de mouvement non annulable.",
+            )
+
+        mouvement.annule = True
+        mouvement.date_annulation = datetime.now(timezone.utc)
+        mouvement.annule_par = annule_par
+        mouvement.motif_annulation = motif.strip()
+
+        db.commit()
+        db.refresh(mouvement)
+        return mouvement
     except HTTPException:
         db.rollback()
         raise

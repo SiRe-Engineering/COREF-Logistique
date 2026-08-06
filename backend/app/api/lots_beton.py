@@ -1,18 +1,22 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
+from app.dependencies import exiger_roles
 from app.models.article import Article
 from app.models.famille import Famille
-from app.models.lot_beton import LotBeton
+from app.models.lot_beton import LotBeton, StockLot
+from app.models.mouvement import MouvementStock
+from app.models.utilisateur import Utilisateur
 from app.schemas.lot_beton import (
     LotBetonCreate,
     LotBetonRead,
     LotBetonUpdate,
+    SuppressionLotCreate,
 )
 
 router = APIRouter(
@@ -70,6 +74,8 @@ def lister_lots(
 
     if article_id is not None:
         requete = requete.where(LotBeton.article_id == article_id)
+
+    requete = requete.where(LotBeton.supprime.is_(False))
 
     if actifs_uniquement:
         requete = requete.where(LotBeton.actif.is_(True))
@@ -151,5 +157,100 @@ def modifier_lot(
             ),
         )
 
+    db.refresh(lot)
+    return lot
+
+
+
+@router.delete("/{lot_id}", response_model=LotBetonRead)
+def supprimer_lot(
+    lot_id: int,
+    payload: SuppressionLotCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(
+        exiger_roles("ADMINISTRATEUR_TECHNIQUE")
+    ),
+) -> LotBeton:
+    lot = db.scalar(
+        select(LotBeton)
+        .options(selectinload(LotBeton.stocks))
+        .where(LotBeton.id == lot_id)
+        .with_for_update(of=LotBeton)
+    )
+    if lot is None or lot.supprime:
+        raise HTTPException(status_code=404, detail="Lot introuvable.")
+
+    stock_physique = sum(
+        stock.quantite_physique or 0
+        for stock in lot.stocks
+    )
+    stock_reserve = sum(
+        stock.quantite_reservee or 0
+        for stock in lot.stocks
+    )
+    if stock_physique > 0 or stock_reserve > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ce lot possède encore du stock physique ou réservé. "
+                "Ramenez d’abord ses quantités à zéro."
+            ),
+        )
+
+    mouvements_actifs = db.scalar(
+        select(func.count(MouvementStock.id)).where(
+            MouvementStock.lot_id == lot.id,
+            MouvementStock.annule.is_(False),
+        )
+    )
+    if mouvements_actifs:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ce lot possède encore des écritures de stock actives. "
+                "Annulez-les d’abord."
+            ),
+        )
+
+    lignes_preparation = db.execute(
+        text(
+            "SELECT COUNT(*) FROM lignes_preparation "
+            "WHERE lot_id = :lot_id "
+            "OR lot_remplacement_id = :lot_id"
+        ),
+        {"lot_id": lot.id},
+    ).scalar_one()
+    if lignes_preparation:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ce lot est référencé dans une préparation et ne peut "
+                "pas être supprimé."
+            ),
+        )
+
+    reservations = db.execute(
+        text(
+            "SELECT COUNT(*) FROM reservations_stock "
+            "WHERE lot_id = :lot_id"
+        ),
+        {"lot_id": lot.id},
+    ).scalar_one()
+    if reservations:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ce lot est référencé par une réservation et ne peut "
+                "pas être supprimé."
+            ),
+        )
+
+    lot.actif = False
+    lot.supprime = True
+    lot.date_suppression = datetime.now(timezone.utc)
+    lot.supprime_par = utilisateur.nom_complet
+    lot.motif_suppression = payload.motif.strip()
+
+    db.commit()
     db.refresh(lot)
     return lot

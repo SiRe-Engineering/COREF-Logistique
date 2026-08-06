@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.dependencies import exiger_roles
 from app.models.article import Article
 from app.models.mouvement import MouvementStock
-from app.schemas.mouvement import MouvementCreate, MouvementRead
-from app.services.mouvements import executer_mouvement
+from app.models.utilisateur import Utilisateur
+from app.schemas.mouvement import (
+    AnnulationMouvementCreate,
+    MouvementCreate,
+    MouvementRead,
+)
+from app.services.mouvements import annuler_mouvement, executer_mouvement
 
 router = APIRouter(
     prefix="/api/mouvements",
@@ -23,6 +29,7 @@ def lister_mouvements(
     type_mouvement: str | None = None,
     emplacement_id: int | None = None,
     limite: int = Query(default=200, ge=1, le=1000),
+    inclure_annules: bool = False,
     db: Session = Depends(get_db),
 ) -> list[MouvementStock]:
     requete = (
@@ -38,6 +45,9 @@ def lister_mouvements(
         .order_by(MouvementStock.date_creation.desc())
         .limit(limite)
     )
+
+    if not inclure_annules:
+        requete = requete.where(MouvementStock.annule.is_(False))
 
     if recherche:
         terme = f"%{recherche.strip()}%"
@@ -92,3 +102,32 @@ def creer_mouvement(
     db: Session = Depends(get_db),
 ) -> MouvementStock:
     return executer_mouvement(db, payload)
+
+
+
+@router.delete("/{mouvement_id}", response_model=MouvementRead)
+def supprimer_ecriture_stock(
+    mouvement_id: int,
+    payload: AnnulationMouvementCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(
+        exiger_roles("ADMINISTRATEUR_TECHNIQUE")
+    ),
+) -> MouvementStock:
+    mouvement = db.scalar(
+        select(MouvementStock)
+        .where(MouvementStock.id == mouvement_id)
+        .with_for_update(of=MouvementStock)
+    )
+    if mouvement is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Écriture de stock introuvable.",
+        )
+
+    return annuler_mouvement(
+        db,
+        mouvement,
+        annule_par=utilisateur.nom_complet,
+        motif=payload.motif,
+    )

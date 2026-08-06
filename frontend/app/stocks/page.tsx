@@ -23,6 +23,14 @@ type Article = {
   stock_minimum: string;
   stock_maximum: string;
   seuil_alerte: string;
+  famille_relation: { code: string } | null;
+};
+
+type Lot = {
+  id: number;
+  article_id: number;
+  numero_lot_fournisseur: string;
+  date_peremption: string;
 };
 
 type Emplacement = {
@@ -68,6 +76,7 @@ const API_URL =
 
 const initialForm = {
   article_id: "",
+  lot_id: "",
   emplacement_id: "",
   quantite_physique: "0",
 };
@@ -92,6 +101,7 @@ export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
+  const [lots, setLots] = useState<Lot[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selection, setSelection] = useState<Stock | null>(null);
   const [resume, setResume] = useState<Resume>({
@@ -117,17 +127,28 @@ export default function StocksPage() {
         fetch(`${API_URL}/api/articles`),
         fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
         fetch(`${API_URL}/api/stocks/resume`),
+        fetch(`${API_URL}/api/lots-beton`),
       ]);
 
-      if (responses.some((response) => !response.ok)) throw new Error();
+      if (responses.some((response) => !response.ok)) {
+        throw new Error();
+      }
 
-      const [stocksData, articlesData, emplacementsData, resumeData] =
-        await Promise.all(responses.map((response) => response.json()));
+      const [
+        stocksData,
+        articlesData,
+        emplacementsData,
+        resumeData,
+        lotsData,
+      ] = await Promise.all(
+        responses.map((response) => response.json())
+      );
 
       setStocks(stocksData);
       setArticles(articlesData);
       setEmplacements(emplacementsData);
       setResume(resumeData);
+      setLots(lotsData);
     } catch {
       setToast({
         type: "error",
@@ -148,6 +169,17 @@ export default function StocksPage() {
     );
     setReservations(response.ok ? await response.json() : []);
   }
+
+  const articleSelectionne = articles.find(
+    (article) => article.id === Number(form.article_id)
+  );
+
+  const articleEstBeton =
+    articleSelectionne?.famille_relation?.code === "BET";
+
+  const lotsArticle = lots.filter(
+    (lot) => lot.article_id === Number(form.article_id)
+  );
 
   const stocksFiltres = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
@@ -179,27 +211,56 @@ export default function StocksPage() {
   async function enregistrer(event: FormEvent) {
     event.preventDefault();
 
+    if (articleEstBeton && !form.lot_id) {
+      setToast({
+        type: "error",
+        message: "Un lot est obligatoire pour un stock béton.",
+      });
+      return;
+    }
+
+    const quantitePhysique = Number(
+      form.quantite_physique.replace(",", ".")
+    );
+
+    if (!Number.isFinite(quantitePhysique) || quantitePhysique < 0) {
+      setToast({
+        type: "error",
+        message: "La quantité physique est invalide.",
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/api/stocks`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           article_id: Number(form.article_id),
+          lot_id: form.lot_id ? Number(form.lot_id) : null,
           emplacement_id: Number(form.emplacement_id),
-          quantite_physique: Number(form.quantite_physique),
+          quantite_physique: quantitePhysique,
         }),
       });
 
       if (!response.ok) {
         const detail = await response.json().catch(() => null);
-        throw new Error(detail?.detail ?? "Enregistrement impossible.");
+        throw new Error(
+          typeof detail?.detail === "string"
+            ? detail.detail
+            : "Enregistrement impossible."
+        );
       }
 
       setModalOuverte(false);
       setForm(initialForm);
       setToast({
         type: "success",
-        message: "La quantité physique a été enregistrée.",
+        message: articleEstBeton
+          ? "Le stock physique du lot a été enregistré."
+          : "La quantité physique a été enregistrée.",
       });
       await charger();
     } catch (cause) {
@@ -447,8 +508,8 @@ export default function StocksPage() {
                 <span className="eyebrow">Stock physique</span>
                 <h2>Définir une quantité physique</h2>
                 <p>
-                  La quantité réservée est gérée automatiquement et ne peut
-                  pas être saisie ici.
+                  Pour un béton, le lot est obligatoire. La quantité
+                  réservée reste gérée automatiquement.
                 </p>
               </div>
             </div>
@@ -464,6 +525,7 @@ export default function StocksPage() {
                       setForm({
                         ...form,
                         article_id: event.target.value,
+                        lot_id: "",
                       })
                     }
                   >
@@ -475,6 +537,29 @@ export default function StocksPage() {
                     ))}
                   </select>
                 </label>
+
+                {articleEstBeton && (
+                  <label className="field field-wide">
+                    <span>Lot béton *</span>
+                    <select
+                      required
+                      value={form.lot_id}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          lot_id: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Sélectionner</option>
+                      {lotsArticle.map((lot) => (
+                        <option key={lot.id} value={lot.id}>
+                          {lot.numero_lot_fournisseur}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
 
                 <label className="field field-wide">
                   <span>Emplacement *</span>
