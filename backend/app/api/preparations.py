@@ -36,7 +36,7 @@ from app.services.reservations import (
 
 router = APIRouter(prefix="/api/preparations", tags=["Préparations"])
 
-STATUTS_EDITABLES = {"BROUILLON", "VALIDEE", "EN_PREPARATION"}
+STATUTS_EDITABLES = {"BROUILLON"}
 STATUTS_LIGNE_AUTORISES = {
     "A_PREPARER",
     "PREPAREE",
@@ -274,9 +274,6 @@ def ajouter_ligne(
     preparation.lignes.append(ligne)
     db.flush()
 
-    if preparation.statut in {"VALIDEE", "EN_PREPARATION"}:
-        synchroniser_reservation_ligne(db, preparation, ligne)
-
     notifier_acteurs(
         db,
         preparation,
@@ -312,23 +309,6 @@ def modifier_ligne(
         raise HTTPException(status_code=404, detail="Ligne introuvable.")
 
     donnees = payload.model_dump(exclude_unset=True)
-
-    # Une saisie de quantité préparée ne modifie pas le besoin réservé.
-    champs_reservation = {
-        "lot_id",
-        "emplacement_source_id",
-        "quantite_demandee",
-    }
-    reservation_a_recalculer = bool(
-        champs_reservation.intersection(donnees)
-    )
-    reservation_active = preparation.statut in {
-        "VALIDEE",
-        "EN_PREPARATION",
-    }
-
-    if reservation_active and reservation_a_recalculer:
-        liberer_reservation_ligne(db, ligne)
 
     statut_demande = donnees.get("statut")
     if (
@@ -384,9 +364,6 @@ def modifier_ligne(
                 status_code=422,
                 detail="Le lot ne correspond pas à l’article.",
             )
-
-    if reservation_active and reservation_a_recalculer:
-        synchroniser_reservation_ligne(db, preparation, ligne)
 
     notifier_acteurs(
         db,
@@ -504,6 +481,9 @@ def valider_preparation(
         db.commit()
         return charger_preparation(db, preparation_id)
     except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
         db.rollback()
         raise
 

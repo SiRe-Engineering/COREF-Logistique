@@ -283,10 +283,7 @@ export default function PreparationsPage() {
   }, [preparations, recherche, filtreStatut]);
 
   const editable =
-    selection !== null &&
-    ["BROUILLON", "VALIDEE", "EN_PREPARATION"].includes(
-      selection.statut
-    );
+    selection !== null && selection.statut === "BROUILLON";
 
 
   const indicateurs = useMemo(() => {
@@ -599,6 +596,61 @@ export default function PreparationsPage() {
     });
   }
 
+
+
+  async function validerEtReserver() {
+    if (!selection || selection.statut !== "BROUILLON") return;
+
+    if (selection.lignes.length === 0) {
+      setToast({
+        type: "error",
+        message: "Ajoute au moins une ligne avant de valider.",
+      });
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Valider ${selection.reference} et réserver toutes les quantités ?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/valider`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees(),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Validation et réservation impossibles."
+        );
+      }
+
+      await actualiserSelection(data);
+      setToast({
+        type: "success",
+        message: "Préparation validée et stock réservé.",
+      });
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Validation et réservation impossibles.",
+      });
+    }
+  }
 
   async function supprimerPreparation() {
     if (!selection || !adminTechnique) return;
@@ -1534,27 +1586,15 @@ export default function PreparationsPage() {
               }
             >
               {selection.statut === "BROUILLON" && (
-                <Button onClick={() => action("valider")}>
+                <Button onClick={validerEtReserver}>
                   <CheckCircle2 size={17} />
                   Valider et réserver
                 </Button>
               )}
               {selection.statut === "VALIDEE" && (
-                <Button onClick={() => action("demarrer")}>
-                  <Play size={17} />
-                  Démarrer
-                </Button>
-              )}
-              {selection.statut === "EN_PREPARATION" && (
-                <Button onClick={() => action("terminer")}>
-                  Marquer prête
-                </Button>
-              )}
-              {selection.statut === "PRETE" && (
-                <Button onClick={() => action("expedier")}>
-                  <Send size={17} />
-                  Expédier
-                </Button>
+                <span className={styles.lockedMessage}>
+                  Préparation validée — réservations actives
+                </span>
               )}
             </ActionBar>
           </div>

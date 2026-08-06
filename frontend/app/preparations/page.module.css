@@ -357,3 +357,10 @@
   background: #fef3f2 !important;
   color: #b42318;
 }
+
+
+.lockedMessage {
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 700;
+}
