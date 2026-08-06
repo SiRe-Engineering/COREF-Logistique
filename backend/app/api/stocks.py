@@ -5,11 +5,13 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.dependencies import exiger_roles
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton, StockLot
 from app.models.stock import Stock
+from app.models.utilisateur import Utilisateur
 from app.schemas.stock import StockRead, StockResume, StockSet
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
@@ -260,6 +262,66 @@ def definir_stock(
         db.commit()
         db.refresh(stock)
         return stock
+    except HTTPException:
+        db.rollback()
+        raise
+
+
+
+@router.delete("/{stock_id}", status_code=204)
+def supprimer_stock(
+    stock_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(
+        exiger_roles("ADMINISTRATEUR_TECHNIQUE")
+    ),
+) -> None:
+    stock = db.scalar(
+        select(Stock)
+        .where(Stock.id == stock_id)
+        .with_for_update(of=Stock)
+    )
+    if stock is None:
+        raise HTTPException(status_code=404, detail="Ligne de stock introuvable.")
+
+    if (stock.quantite_reservee or Decimal("0")) > 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Cette ligne possède encore une quantité réservée.",
+        )
+
+    article = db.get(Article, stock.article_id)
+    if article is None:
+        raise HTTPException(status_code=404, detail="Article associé introuvable.")
+
+    try:
+        if article_est_beton(db, article):
+            stocks_lots = list(
+                db.scalars(
+                    select(StockLot)
+                    .join(LotBeton, LotBeton.id == StockLot.lot_id)
+                    .where(
+                        LotBeton.article_id == stock.article_id,
+                        StockLot.emplacement_id == stock.emplacement_id,
+                    )
+                    .with_for_update(of=StockLot)
+                ).all()
+            )
+
+            if any(
+                (ligne.quantite_reservee or Decimal("0")) > 0
+                for ligne in stocks_lots
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Un lot associé possède encore une réservation.",
+                )
+
+            for stock_lot in stocks_lots:
+                db.delete(stock_lot)
+
+        db.delete(stock)
+        db.commit()
     except HTTPException:
         db.rollback()
         raise

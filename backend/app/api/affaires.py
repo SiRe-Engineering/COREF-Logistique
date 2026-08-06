@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.dependencies import exiger_roles
 from app.models.affaire import Affaire
+from app.models.mouvement import MouvementStock
+from app.models.preparation import Preparation
+from app.models.utilisateur import Utilisateur
 from app.schemas.affaire import AffaireCreate, AffaireRead, AffaireUpdate
 
 router = APIRouter(prefix="/api/affaires", tags=["Affaires"])
@@ -110,3 +114,54 @@ def modifier_affaire(
 
     db.refresh(affaire)
     return affaire
+
+
+
+@router.delete("/{affaire_id}", status_code=status.HTTP_204_NO_CONTENT)
+def supprimer_affaire(
+    affaire_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(
+        exiger_roles("ADMINISTRATEUR_TECHNIQUE")
+    ),
+) -> None:
+    affaire = db.scalar(
+        select(Affaire)
+        .where(Affaire.id == affaire_id)
+        .with_for_update(of=Affaire)
+    )
+    if affaire is None:
+        raise HTTPException(status_code=404, detail="Affaire introuvable.")
+
+    nb_preparations = db.scalar(
+        select(func.count(Preparation.id)).where(
+            Preparation.affaire_id == affaire.id
+        )
+    )
+    if nb_preparations:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cette affaire possède encore {nb_preparations} préparation(s).",
+        )
+
+    nb_mouvements = db.scalar(
+        select(func.count(MouvementStock.id)).where(
+            MouvementStock.affaire_id == affaire.id,
+            MouvementStock.annule.is_(False),
+        )
+    )
+    if nb_mouvements:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cette affaire possède encore {nb_mouvements} écriture(s) active(s).",
+        )
+
+    try:
+        db.delete(affaire)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Cette affaire est encore référencée par d’autres données.",
+        )

@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   ActionBar,
   Button,
@@ -196,6 +197,8 @@ function libelleStatutLigne(statut: string) {
 }
 
 export default function PreparationsPage() {
+  const { utilisateur } = useAuth();
+  const adminTechnique = utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [preparations, setPreparations] = useState<Preparation[]>([]);
   const [affaires, setAffaires] = useState<Affaire[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -598,71 +601,30 @@ export default function PreparationsPage() {
 
 
   async function supprimerPreparation() {
-    if (!selection) return;
+    if (!selection || !adminTechnique) return;
+    if (!window.confirm(`Supprimer définitivement ${selection.reference} ?`)) return;
 
-    const confirmation = window.confirm(
-      `Supprimer définitivement ${selection.reference} ?\n\n` +
-        "Les réservations associées seront libérées. " +
-        "Cette action est impossible pour une préparation expédiée."
-    );
-
-    if (!confirmation) return;
-
-    const response = await fetch(
-      `${API_URL}/api/preparations/${selection.id}`,
-      { method: "DELETE" }
-    );
-
-    if (!response.ok) {
-      const detail = await response.json().catch(() => null);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}`,
+        { method: "DELETE", headers: entetesAuthentifiees() }
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string" ? data.detail : "Suppression impossible."
+        );
+      }
+      setSelection(null);
+      setToast({ type: "success", message: "Préparation supprimée." });
+      await charger();
+    } catch (cause) {
       setToast({
         type: "error",
-        message: detail?.detail ?? "Suppression impossible.",
+        message: cause instanceof Error ? cause.message : "Suppression impossible.",
       });
-      return;
     }
-
-    setPreparations((actuelles) =>
-      actuelles.filter(
-        (preparation) => preparation.id !== selection.id
-      )
-    );
-    setSelection(null);
-    setEditionEntete(false);
-    setLigneEditee(null);
-    setLigneForm(ligneVide);
-    setToast({
-      type: "success",
-      message: `${selection.reference} supprimée. Les réservations ont été libérées.`,
-    });
   }
-
-
-  async function action(actionName: string) {
-    if (!selection) return;
-
-    const response = await fetch(
-      `${API_URL}/api/preparations/${selection.id}/${actionName}`,
-      { method: "POST" }
-    );
-
-    if (!response.ok) {
-      const detail = await response.json().catch(() => null);
-      setToast({
-        type: "error",
-        message: detail?.detail ?? "Action impossible.",
-      });
-      return;
-    }
-
-    const preparation = await response.json();
-    await actualiserSelection(preparation);
-    setToast({
-      type: "success",
-      message: `${preparation.reference} mise à jour.`,
-    });
-  }
-
 
   async function proposerRemplacement(ligne: Ligne) {
     if (!selection) return;
@@ -1560,7 +1522,7 @@ export default function PreparationsPage() {
             <ActionBar
               sticky
               secondary={
-                selection.statut !== "EXPEDIEE" ? (
+                adminTechnique ? (
                   <Button
                     variant="ghost"
                     onClick={supprimerPreparation}
@@ -1596,7 +1558,6 @@ export default function PreparationsPage() {
               )}
             </ActionBar>
           </div>
-        )}
         )}
       </Drawer>
 

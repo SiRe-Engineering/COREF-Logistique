@@ -8,9 +8,12 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { entetesAuthentifiees } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
@@ -88,6 +91,8 @@ function versFormulaire(affaire: Affaire) {
 }
 
 export default function AffairesPage() {
+  const { utilisateur } = useAuth();
+  const adminTechnique = utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [affaires, setAffaires] = useState<Affaire[]>([]);
   const [recherche, setRecherche] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("");
@@ -270,6 +275,37 @@ export default function AffairesPage() {
       });
     } finally {
       setEnregistrement(false);
+    }
+  }
+
+
+  async function supprimerAffaire(affaire: Affaire) {
+    if (!adminTechnique) return;
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${affaire.code_externe || affaire.reference} ?`
+      )
+    ) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/affaires/${affaire.id}`, {
+        method: "DELETE",
+        headers: entetesAuthentifiees(),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string" ? data.detail : "Suppression impossible."
+        );
+      }
+      if (affaireSelectionnee?.id === affaire.id) fermerDrawer();
+      setToast({ type: "success", message: "Affaire supprimée." });
+      await charger();
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message: cause instanceof Error ? cause.message : "Suppression impossible.",
+      });
     }
   }
 
@@ -521,6 +557,15 @@ export default function AffairesPage() {
                 <Pencil size={17} />
                 Modifier l’affaire
               </Button>
+              {adminTechnique && (
+                <Button
+                  variant="danger"
+                  onClick={() => supprimerAffaire(affaireSelectionnee)}
+                >
+                  <Trash2 size={17} />
+                  Supprimer
+                </Button>
+              )}
             </div>
           </div>
         )}

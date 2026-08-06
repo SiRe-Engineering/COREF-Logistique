@@ -6,13 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
-from app.dependencies import utilisateur_courant
+from app.dependencies import exiger_roles, utilisateur_courant
 from app.models.affaire import Affaire
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton
 from app.models.preparation import LignePreparation, Preparation
+from app.models.reservation import Notification
 from app.models.utilisateur import Utilisateur
 from app.schemas.mouvement import MouvementCreate
 from app.schemas.preparation import (
@@ -433,59 +434,31 @@ def supprimer_ligne(
     return charger_preparation(db, preparation_id)
 
 
-@router.delete("/{preparation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{preparation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def supprimer_preparation(
     preparation_id: int,
     db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(
+        exiger_roles("ADMINISTRATEUR_TECHNIQUE")
+    ),
 ) -> None:
     preparation = charger_preparation(db, preparation_id)
-
-    if preparation.statut == "EXPEDIEE":
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Une préparation expédiée ne peut pas être supprimée. "
-                "Son historique doit être conservé."
-            ),
-        )
-
-    reference = preparation.reference
-    demandeur = preparation.demandeur
-    preparateur = preparation.preparateur
 
     try:
         liberer_reservations_preparation(db, preparation)
 
-        creer_notification(
-            db,
-            demandeur,
-            "Préparation supprimée",
-            f"{reference} a été supprimée et ses réservations ont été libérées.",
-            "/preparations",
-            "INFORMATION",
-        )
-
-        if (
-            preparateur
-            and preparateur.strip().lower()
-            != (demandeur or "").strip().lower()
-        ):
-            creer_notification(
-                db,
-                preparateur,
-                "Préparation supprimée",
-                f"{reference} a été supprimée et ses réservations ont été libérées.",
-                "/preparations",
-                "INFORMATION",
-            )
+        lien = f"/preparations?preparation={preparation.id}"
+        for notification in db.scalars(
+            select(Notification).where(Notification.lien == lien)
+        ).all():
+            db.delete(notification)
 
         db.delete(preparation)
         db.commit()
-
     except HTTPException:
-        db.rollback()
-        raise
-    except Exception:
         db.rollback()
         raise
 

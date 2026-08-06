@@ -7,9 +7,12 @@ import {
   PackageCheck,
   Plus,
   Search,
+  Trash2,
   Warehouse,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { entetesAuthentifiees } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
@@ -98,6 +101,8 @@ function statutStock(stock: Stock) {
 }
 
 export default function StocksPage() {
+  const { utilisateur } = useAuth();
+  const adminTechnique = utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
@@ -274,6 +279,39 @@ export default function StocksPage() {
     }
   }
 
+
+  async function supprimerStock(stock: Stock) {
+    if (
+      !window.confirm(
+        `Supprimer le stock ${stock.article.reference} à ${stock.emplacement.nom} ?`
+      )
+    ) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/stocks/${stock.id}`, {
+        method: "DELETE",
+        headers: entetesAuthentifiees(),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string" ? data.detail : "Suppression impossible."
+        );
+      }
+      if (selection?.id === stock.id) {
+        setSelection(null);
+        setReservations([]);
+      }
+      setToast({ type: "success", message: "Stock supprimé." });
+      await charger();
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message: cause instanceof Error ? cause.message : "Suppression impossible.",
+      });
+    }
+  }
+
   return (
     <div>
       <div className="breadcrumb">Exploitation / Stocks</div>
@@ -379,6 +417,7 @@ export default function StocksPage() {
                 <th>Disponible</th>
                 <th>Mini</th>
                 <th>Statut</th>
+                {adminTechnique && <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
@@ -427,6 +466,21 @@ export default function StocksPage() {
                     <td>
                       <Badge tone={statut.tone}>{statut.label}</Badge>
                     </td>
+                    {adminTechnique && (
+                      <td>
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          title="Supprimer ce stock"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            supprimerStock(stock);
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
