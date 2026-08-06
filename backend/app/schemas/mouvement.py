@@ -56,6 +56,7 @@ class MouvementCreate(BaseModel):
     article_id: int
     lot_id: int | None = None
     affaire_id: int | None = None
+    inventaire_id: int | None = None
     preparation_id: int | None = None
     ligne_preparation_id: int | None = None
     emplacement_source_id: int | None = None
@@ -115,6 +116,7 @@ class MouvementRead(BaseModel):
     article_id: int
     lot_id: int | None
     affaire_id: int | None
+    inventaire_id: int | None
     preparation_id: int | None
     ligne_preparation_id: int | None
     emplacement_source_id: int | None

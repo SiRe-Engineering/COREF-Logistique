@@ -700,6 +700,8 @@ def expedier_preparation(
                 valider_transaction=False,
             )
 
+            ligne.quantite_expediee = quantite_sortie
+            ligne.quantite_retournee = Decimal("0")
             ligne.statut = "EXPEDIEE"
 
         preparation.statut = "EXPEDIEE"
@@ -1003,52 +1005,43 @@ def lister_retours_disponibles(
     resultat: list[LigneRetourDisponibleRead] = []
 
     for ligne in preparation.lignes:
-        sorties = list(
-            db.scalars(
-                select(MouvementStock).where(
-                    MouvementStock.preparation_id == preparation.id,
-                    MouvementStock.ligne_preparation_id == ligne.id,
-                    MouvementStock.type == "SORTIE",
-                    MouvementStock.annule.is_(False),
-                )
-            ).all()
+        quantite_expediee = (
+            ligne.quantite_expediee or Decimal("0")
         )
-        retours = list(
-            db.scalars(
-                select(MouvementStock).where(
-                    MouvementStock.preparation_id == preparation.id,
-                    MouvementStock.ligne_preparation_id == ligne.id,
-                    MouvementStock.type == "RETOUR",
-                    MouvementStock.annule.is_(False),
-                )
-            ).all()
-        )
-
-        quantite_expediee = sum(
-            (mouvement.quantite for mouvement in sorties),
-            Decimal("0"),
-        )
-        quantite_retournee = sum(
-            (mouvement.quantite for mouvement in retours),
-            Decimal("0"),
+        quantite_retournee = (
+            ligne.quantite_retournee or Decimal("0")
         )
         quantite_retournable = max(
             quantite_expediee - quantite_retournee,
             Decimal("0"),
         )
 
-        if quantite_retournable <= 0 or not sorties:
+        if quantite_retournable <= 0:
             continue
 
-        mouvement_sortie = sorties[0]
+        remplacement_accepte = (
+            ligne.decision_remplacement == "ACCEPTEE"
+            and ligne.article_remplacement_id is not None
+        )
+
+        article = (
+            ligne.article_remplacement
+            if remplacement_accepte
+            else ligne.article
+        )
+        lot = (
+            ligne.lot_remplacement
+            if remplacement_accepte
+            else ligne.lot
+        )
 
         resultat.append(
             LigneRetourDisponibleRead(
                 ligne_preparation_id=ligne.id,
-                article_id=mouvement_sortie.article_id,
-                lot_id=mouvement_sortie.lot_id,
-                article=mouvement_sortie.article,
-                lot=mouvement_sortie.lot,
+                article_id=article.id,
+                lot_id=lot.id if lot is not None else None,
+                article=article,
+                lot=lot,
                 quantite_expediee=quantite_expediee,
                 quantite_deja_retournee=quantite_retournee,
                 quantite_retournable=quantite_retournable,
@@ -1105,51 +1098,25 @@ def enregistrer_retour_chantier(
                     detail="Ligne de préparation introuvable.",
                 )
 
-            sorties = list(
-                db.scalars(
-                    select(MouvementStock)
-                    .where(
-                        MouvementStock.preparation_id
-                        == preparation.id,
-                        MouvementStock.ligne_preparation_id
-                        == ligne.id,
-                        MouvementStock.type == "SORTIE",
-                        MouvementStock.annule.is_(False),
-                    )
-                    .with_for_update(of=MouvementStock)
-                ).all()
+            # Lock the line itself: it is the source of truth.
+            ligne_verrouillee = db.scalar(
+                select(LignePreparation)
+                .where(LignePreparation.id == ligne.id)
+                .with_for_update(of=LignePreparation)
             )
-            if not sorties:
+            if ligne_verrouillee is None:
                 raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"{ligne.article.reference} : aucune sortie "
-                        "d’expédition n’a été trouvée."
-                    ),
+                    status_code=404,
+                    detail="Ligne de préparation introuvable.",
                 )
 
-            retours = list(
-                db.scalars(
-                    select(MouvementStock)
-                    .where(
-                        MouvementStock.preparation_id
-                        == preparation.id,
-                        MouvementStock.ligne_preparation_id
-                        == ligne.id,
-                        MouvementStock.type == "RETOUR",
-                        MouvementStock.annule.is_(False),
-                    )
-                    .with_for_update(of=MouvementStock)
-                ).all()
+            quantite_expediee = (
+                ligne_verrouillee.quantite_expediee
+                or Decimal("0")
             )
-
-            quantite_expediee = sum(
-                (mouvement.quantite for mouvement in sorties),
-                Decimal("0"),
-            )
-            quantite_retournee = sum(
-                (mouvement.quantite for mouvement in retours),
-                Decimal("0"),
+            quantite_retournee = (
+                ligne_verrouillee.quantite_retournee
+                or Decimal("0")
             )
             quantite_retournable = (
                 quantite_expediee - quantite_retournee
@@ -1164,18 +1131,30 @@ def enregistrer_retour_chantier(
                     ),
                 )
 
-            sortie_reference = sorties[0]
-            commentaire = item.commentaire
-            if not commentaire:
-                commentaire = (
-                    f"Retour chantier lié à "
-                    f"{preparation.reference}"
-                )
+            remplacement_accepte = (
+                ligne.decision_remplacement == "ACCEPTEE"
+                and ligne.article_remplacement_id is not None
+            )
+            article_id = (
+                ligne.article_remplacement_id
+                if remplacement_accepte
+                else ligne.article_id
+            )
+            lot_id = (
+                ligne.lot_remplacement_id
+                if remplacement_accepte
+                else ligne.lot_id
+            )
+
+            commentaire = (
+                item.commentaire
+                or f"Retour chantier lié à {preparation.reference}"
+            )
 
             mouvement = MouvementCreate(
                 type="RETOUR",
-                article_id=sortie_reference.article_id,
-                lot_id=sortie_reference.lot_id,
+                article_id=article_id,
+                lot_id=lot_id,
                 affaire_id=preparation.affaire_id,
                 preparation_id=preparation.id,
                 ligne_preparation_id=ligne.id,
@@ -1202,6 +1181,10 @@ def enregistrer_retour_chantier(
                 db,
                 mouvement,
                 valider_transaction=False,
+            )
+
+            ligne_verrouillee.quantite_retournee = (
+                quantite_retournee + item.quantite
             )
 
             total += item.quantite
@@ -1232,3 +1215,4 @@ def enregistrer_retour_chantier(
     except Exception:
         db.rollback()
         raise
+

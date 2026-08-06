@@ -2,6 +2,7 @@
 
 import { entetesAuthentifiees } from "@/lib/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   Pencil,
@@ -71,6 +72,8 @@ type Ligne = {
   quantite_demandee: string;
   quantite_preparee: string;
   quantite_manquante: string;
+  quantite_expediee: string;
+  quantite_retournee: string;
   statut: string;
   commentaire: string | null;
   motif_ecart: string | null;
@@ -229,6 +232,7 @@ export default function PreparationsPage() {
   const [retourOuvert, setRetourOuvert] = useState(false);
   const [retourLignes, setRetourLignes] = useState<LigneRetourForm[]>([]);
   const [retourEnregistrement, setRetourEnregistrement] = useState(false);
+  const [monte, setMonte] = useState(false);
   const [editionEntete, setEditionEntete] = useState(false);
   const [ligneEditee, setLigneEditee] = useState<Ligne | null>(null);
   const [form, setForm] = useState(formulaireVide);
@@ -269,6 +273,10 @@ export default function PreparationsPage() {
 
   useEffect(() => {
     charger();
+  }, []);
+
+  useEffect(() => {
+    setMonte(true);
   }, []);
 
   const preparationsFiltrees = useMemo(() => {
@@ -794,7 +802,7 @@ export default function PreparationsPage() {
         setToast({
           type: "error",
           message:
-            "Toutes les quantités expédiées ont déjà été retournées.",
+            "Aucune quantité ne reste à retourner pour cette préparation.",
         });
         return;
       }
@@ -1160,12 +1168,12 @@ export default function PreparationsPage() {
 
   return (
     <div>
-      <div className="breadcrumb">Exploitation / Préparations</div>
+      <div className="breadcrumb">Exploitation / Préparations / Retours</div>
 
       <div className="page-heading page-heading-actions">
         <div>
           <span className="eyebrow">Flux chantier</span>
-          <h1>Préparations</h1>
+          <h1>Préparations / Retours</h1>
           <p>
             Les besoins validés génèrent automatiquement les réservations.
           </p>
@@ -1600,6 +1608,52 @@ export default function PreparationsPage() {
               </SectionCard>
             )}
 
+            {selection.statut === "EXPEDIEE" && (
+              <section className={styles.returnSummary}>
+                <div>
+                  <span>Quantité expédiée</span>
+                  <strong>
+                    {selection.lignes
+                      .reduce(
+                        (total, ligne) =>
+                          total + Number(ligne.quantite_expediee || 0),
+                        0
+                      )
+                      .toLocaleString("fr-FR")}
+                  </strong>
+                </div>
+                <div>
+                  <span>Quantité retournée</span>
+                  <strong>
+                    {selection.lignes
+                      .reduce(
+                        (total, ligne) =>
+                          total + Number(ligne.quantite_retournee || 0),
+                        0
+                      )
+                      .toLocaleString("fr-FR")}
+                  </strong>
+                </div>
+                <div>
+                  <span>Reste retournable</span>
+                  <strong>
+                    {selection.lignes
+                      .reduce(
+                        (total, ligne) =>
+                          total +
+                          Math.max(
+                            Number(ligne.quantite_expediee || 0) -
+                              Number(ligne.quantite_retournee || 0),
+                            0
+                          ),
+                        0
+                      )
+                      .toLocaleString("fr-FR")}
+                  </strong>
+                </div>
+              </section>
+            )}
+
             {(selection.statut === "EN_PREPARATION" ||
               selection.statut === "PRETE") && (
               <section className={styles.executionProgress}>
@@ -1918,9 +1972,12 @@ export default function PreparationsPage() {
         )}
       </Drawer>
 
-      {retourOuvert && selection && (
+      {monte &&
+        retourOuvert &&
+        selection &&
+        createPortal(
         <div
-          className="modal-backdrop"
+          className={styles.returnPortalBackdrop}
           onMouseDown={() => setRetourOuvert(false)}
         >
           <section
@@ -2042,8 +2099,9 @@ export default function PreparationsPage() {
               </div>
             </form>
           </section>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
 
       {modalOuverte && (
         <div

@@ -120,6 +120,16 @@ class LignePreparation(Base):
         Numeric(14, 3),
         default=0,
     )
+    quantite_expediee: Mapped[Decimal] = mapped_column(
+        Numeric(14, 3),
+        default=0,
+        nullable=False,
+    )
+    quantite_retournee: Mapped[Decimal] = mapped_column(
+        Numeric(14, 3),
+        default=0,
+        nullable=False,
+    )
     statut: Mapped[str] = mapped_column(
         String(30),
         default="A_PREPARER",

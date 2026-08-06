@@ -39,7 +39,7 @@ export function Sidebar() {
     { href: "/mouvements", label: "Mouvements", icon: Boxes },
     { href: "/demandes-sortie", label: "Demandes de sortie", icon: ClipboardList },
     { href: "/inventaires", label: "Inventaires", icon: ClipboardCheck },
-    { href: "/preparations", label: "Préparations", icon: PackageCheck },
+    { href: "/preparations", label: "Préparations / Retours", icon: PackageCheck },
     { href: "/affaires", label: "Affaires", icon: BriefcaseBusiness },
     { href: "/lots-beton", label: "Lots béton", icon: FlaskConical },
     { href: "/materiels", label: "Matériels", icon: Hammer },

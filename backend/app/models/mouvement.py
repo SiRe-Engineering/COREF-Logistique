@@ -49,6 +49,11 @@ class MouvementStock(Base):
         index=True,
         nullable=True,
     )
+    inventaire_id: Mapped[int | None] = mapped_column(
+        ForeignKey("inventaires.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
     preparation_id: Mapped[int | None] = mapped_column(
         ForeignKey("preparations.id", ondelete="RESTRICT"),
         index=True,
@@ -109,6 +114,11 @@ class MouvementStock(Base):
     article = relationship("Article", lazy="joined")
     lot = relationship("LotBeton", lazy="joined")
     affaire = relationship("Affaire", lazy="joined")
+    inventaire = relationship(
+        "Inventaire",
+        foreign_keys=[inventaire_id],
+        lazy="joined",
+    )
     preparation = relationship(
         "Preparation",
         foreign_keys=[preparation_id],

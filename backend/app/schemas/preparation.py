@@ -85,6 +85,8 @@ class LignePreparationRead(BaseModel):
     quantite_demandee: Decimal
     quantite_preparee: Decimal
     quantite_manquante: Decimal
+    quantite_expediee: Decimal
+    quantite_retournee: Decimal
     statut: str
     commentaire: str | None
     motif_ecart: str | None
