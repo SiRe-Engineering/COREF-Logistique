@@ -30,6 +30,7 @@ from app.services.reservations import (
     liberer_reservation_ligne,
     liberer_reservations_preparation,
     synchroniser_reservation_ligne,
+    transferer_reservation_remplacement,
 )
 
 router = APIRouter(prefix="/api/preparations", tags=["Préparations"])
@@ -611,15 +612,50 @@ def expedier_preparation(
         liberer_reservations_preparation(db, preparation)
 
         for ligne in preparation.lignes:
+            remplacement_accepte = (
+                ligne.decision_remplacement == "ACCEPTEE"
+                and ligne.article_remplacement_id is not None
+            )
+
+            article_sorti_id = (
+                ligne.article_remplacement_id
+                if remplacement_accepte
+                else ligne.article_id
+            )
+            lot_sorti_id = (
+                ligne.lot_remplacement_id
+                if remplacement_accepte
+                else ligne.lot_id
+            )
+            emplacement_sortie_id = (
+                ligne.emplacement_remplacement_id
+                if remplacement_accepte
+                else ligne.emplacement_source_id
+            )
+            quantite_sortie = (
+                ligne.quantite_remplacement
+                if remplacement_accepte
+                else ligne.quantite_preparee
+            )
+
+            commentaire_sortie = ligne.commentaire
+            if remplacement_accepte:
+                commentaire_sortie = (
+                    f"Article demandé : {ligne.article.reference}. "
+                    f"Article sorti : "
+                    f"{ligne.article_remplacement.reference}. "
+                    f"{ligne.commentaire_remplacement or ''}"
+                ).strip()
+
             mouvement = MouvementCreate(
                 type="SORTIE",
-                article_id=ligne.article_id,
-                lot_id=ligne.lot_id,
+                article_id=article_sorti_id,
+                lot_id=lot_sorti_id,
                 affaire_id=preparation.affaire_id,
-                emplacement_source_id=ligne.emplacement_source_id,
-                quantite=ligne.quantite_preparee,
+                emplacement_source_id=emplacement_sortie_id,
+                quantite=quantite_sortie,
                 motif=f"Expédition {preparation.reference}",
-                commentaire=ligne.commentaire,
+                commentaire=commentaire_sortie,
                 operateur=preparation.preparateur,
                 charge_affaires=preparation.affaire.charge_affaires,
                 zone_intervention=preparation.affaire.zone_intervention,
@@ -808,27 +844,43 @@ def accepter_remplacement(
             detail="Aucun remplacement n’est en attente.",
         )
 
-    ligne.decision_remplacement = "ACCEPTEE"
-    ligne.decision_par = utilisateur.nom_complet
-    ligne.commentaire_decision = payload.commentaire_decision
-    ligne.date_decision_remplacement = datetime.now(timezone.utc)
-    ligne.statut = "REMPLACEMENT_ACCEPTE"
-
-    if preparation.preparateur:
-        creer_notification(
+    try:
+        transferer_reservation_remplacement(
             db,
-            preparation.preparateur,
-            "Remplacement accepté",
-            (
-                f"{preparation.reference} — le remplacement proposé pour "
-                f"{ligne.article.reference} a été accepté."
-            ),
-            f"/preparations?preparation={preparation.id}",
-            "INFORMATION",
+            preparation,
+            ligne,
+            utilisateur.nom_complet,
         )
 
-    db.commit()
-    return charger_preparation(db, preparation_id)
+        ligne.decision_remplacement = "ACCEPTEE"
+        ligne.decision_par = utilisateur.nom_complet
+        ligne.commentaire_decision = payload.commentaire_decision
+        ligne.date_decision_remplacement = datetime.now(timezone.utc)
+
+        ligne.statut = "A_PREPARER"
+        ligne.quantite_preparee = Decimal("0")
+        ligne.quantite_manquante = ligne.quantite_demandee
+        ligne.motif_ecart = None
+        ligne.date_fin_preparation = None
+
+        if preparation.preparateur:
+            creer_notification(
+                db,
+                preparation.preparateur,
+                "Remplacement accepté",
+                (
+                    f"{preparation.reference} — le remplacement proposé pour "
+                    f"{ligne.article.reference} a été accepté et réservé."
+                ),
+                f"/preparations?preparation={preparation.id}",
+                "INFORMATION",
+            )
+
+        db.commit()
+        return charger_preparation(db, preparation_id)
+    except HTTPException:
+        db.rollback()
+        raise
 
 
 @router.post(

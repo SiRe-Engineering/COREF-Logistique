@@ -1,5 +1,6 @@
 "use client";
 
+import { entetesAuthentifiees } from "@/lib/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
@@ -662,6 +663,224 @@ export default function PreparationsPage() {
     });
   }
 
+
+  async function proposerRemplacement(ligne: Ligne) {
+    if (!selection) return;
+
+    const candidats = articles.filter(
+      (article) => article.id !== ligne.article_id
+    );
+    const listeArticles = candidats
+      .slice(0, 40)
+      .map(
+        (article) =>
+          `${article.id} — ${article.reference} — ${article.designation}`
+      )
+      .join("\n");
+
+    const saisieArticle = window.prompt(
+      `ID de l’article de remplacement :\n\n${listeArticles}`
+    );
+    if (!saisieArticle) return;
+
+    const articleId = Number(saisieArticle.split("—")[0].trim());
+    const article = articles.find((element) => element.id === articleId);
+
+    if (!article) {
+      setToast({
+        type: "error",
+        message: "Article de remplacement invalide.",
+      });
+      return;
+    }
+
+    const listeEmplacements = emplacements
+      .map(
+        (emplacement) =>
+          `${emplacement.id} — ${emplacement.code} — ${emplacement.nom}`
+      )
+      .join("\n");
+
+    const saisieEmplacement = window.prompt(
+      `ID de l’emplacement :\n\n${listeEmplacements}`,
+      ligne.emplacement_source_id
+        ? String(ligne.emplacement_source_id)
+        : ""
+    );
+    if (!saisieEmplacement) return;
+
+    const emplacementId = Number(
+      saisieEmplacement.split("—")[0].trim()
+    );
+    const emplacementValide = emplacements.some(
+      (emplacement) => emplacement.id === emplacementId
+    );
+
+    if (!emplacementValide) {
+      setToast({
+        type: "error",
+        message: "Emplacement de remplacement invalide.",
+      });
+      return;
+    }
+
+    let lotId: number | null = null;
+
+    if (article.famille_relation?.code === "BET") {
+      const lotsCompatibles = lots.filter(
+        (lot) => lot.article_id === articleId
+      );
+      const listeLots = lotsCompatibles
+        .map(
+          (lot) =>
+            `${lot.id} — ${lot.numero_lot_fournisseur} — ${lot.date_peremption}`
+        )
+        .join("\n");
+
+      const saisieLot = window.prompt(
+        `ID du lot :\n\n${listeLots}`
+      );
+      if (!saisieLot) return;
+
+      lotId = Number(saisieLot.split("—")[0].trim());
+
+      if (!lotsCompatibles.some((lot) => lot.id === lotId)) {
+        setToast({
+          type: "error",
+          message: "Lot de remplacement invalide.",
+        });
+        return;
+      }
+    }
+
+    const quantite = window.prompt(
+      "Quantité de remplacement :",
+      ligne.quantite_demandee
+    );
+    if (!quantite) return;
+
+    const quantiteRemplacement = Number(
+      quantite.replace(",", ".")
+    );
+
+    if (
+      !Number.isFinite(quantiteRemplacement) ||
+      quantiteRemplacement <= 0
+    ) {
+      setToast({
+        type: "error",
+        message: "La quantité de remplacement doit être positive.",
+      });
+      return;
+    }
+
+    const commentaire = window.prompt(
+      "Commentaire justifiant le remplacement (obligatoire) :"
+    );
+    if (!commentaire?.trim()) return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}/remplacement`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            article_remplacement_id: articleId,
+            lot_remplacement_id: lotId,
+            emplacement_remplacement_id: emplacementId,
+            quantite_remplacement: quantiteRemplacement,
+            commentaire_remplacement: commentaire.trim(),
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setToast({
+          type: "error",
+          message:
+            typeof data?.detail === "string"
+              ? data.detail
+              : "Proposition impossible.",
+        });
+        return;
+      }
+
+      await actualiserSelection(data);
+      setToast({
+        type: "success",
+        message: "Proposition de remplacement enregistrée.",
+      });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Impossible de joindre le serveur.",
+      });
+    }
+  }
+
+  async function deciderRemplacement(
+    ligne: Ligne,
+    decision: "accepter" | "refuser"
+  ) {
+    if (!selection) return;
+
+    const commentaire = window.prompt(
+      decision === "accepter"
+        ? "Commentaire de validation (facultatif) :"
+        : "Motif du refus (obligatoire) :"
+    );
+
+    if (decision === "refuser" && !commentaire?.trim()) return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}/remplacement/${decision}`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            commentaire_decision: commentaire?.trim() || null,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setToast({
+          type: "error",
+          message:
+            typeof data?.detail === "string"
+              ? data.detail
+              : "Décision impossible.",
+        });
+        return;
+      }
+
+      await actualiserSelection(data);
+      setToast({
+        type: "success",
+        message:
+          decision === "accepter"
+            ? "Remplacement accepté."
+            : "Remplacement refusé.",
+      });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Impossible de joindre le serveur.",
+      });
+    }
+  }
+
+
   return (
     <div>
       <div className="breadcrumb">Exploitation / Préparations</div>
@@ -1177,9 +1396,14 @@ export default function PreparationsPage() {
                               <small>
                                 {ligne.commentaire_remplacement}
                               </small>
-                              {ligne.decision_par && (
+                              {ligne.decision_remplacement && (
                                 <small>
-                                  Décision : {ligne.decision_par}
+                                  {ligne.decision_remplacement === "ACCEPTEE"
+                                    ? "Remplacement accepté"
+                                    : "Remplacement refusé"}
+                                  {ligne.decision_par
+                                    ? ` par ${ligne.decision_par}`
+                                    : ""}
                                   {ligne.commentaire_decision
                                     ? ` — ${ligne.commentaire_decision}`
                                     : ""}
