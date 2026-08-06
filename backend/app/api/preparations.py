@@ -295,7 +295,22 @@ def modifier_ligne(
     db: Session = Depends(get_db),
 ) -> Preparation:
     preparation = charger_preparation(db, preparation_id)
-    if preparation.statut not in STATUTS_EDITABLES:
+    donnees = payload.model_dump(exclude_unset=True)
+
+    champs_execution = {
+        "quantite_preparee",
+        "statut",
+        "motif_ecart",
+    }
+    modification_execution = (
+        preparation.statut == "EN_PREPARATION"
+        and set(donnees).issubset(champs_execution)
+    )
+
+    if (
+        preparation.statut not in STATUTS_EDITABLES
+        and not modification_execution
+    ):
         raise HTTPException(
             status_code=409,
             detail="Cette préparation ne peut plus être modifiée.",
@@ -307,8 +322,6 @@ def modifier_ligne(
     )
     if ligne is None:
         raise HTTPException(status_code=404, detail="Ligne introuvable.")
-
-    donnees = payload.model_dump(exclude_unset=True)
 
     statut_demande = donnees.get("statut")
     if (
@@ -364,6 +377,13 @@ def modifier_ligne(
                 status_code=422,
                 detail="Le lot ne correspond pas à l’article.",
             )
+
+    if modification_execution:
+        if all(
+            element.statut == "PREPAREE"
+            for element in preparation.lignes
+        ):
+            preparation.statut = "PRETE"
 
     notifier_acteurs(
         db,
@@ -501,6 +521,15 @@ def demarrer_preparation(
         )
 
     preparation.statut = "EN_PREPARATION"
+    maintenant = datetime.now(timezone.utc)
+    for ligne in preparation.lignes:
+        ligne.quantite_preparee = Decimal("0")
+        ligne.quantite_manquante = ligne.quantite_demandee
+        ligne.statut = "A_PREPARER"
+        ligne.motif_ecart = None
+        ligne.date_debut_preparation = maintenant
+        ligne.date_fin_preparation = None
+
     notifier_acteurs(
         db,
         preparation,

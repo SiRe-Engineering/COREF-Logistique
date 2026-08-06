@@ -284,6 +284,8 @@ export default function PreparationsPage() {
 
   const editable =
     selection !== null && selection.statut === "BROUILLON";
+  const executionActive =
+    selection !== null && selection.statut === "EN_PREPARATION";
 
 
   const indicateurs = useMemo(() => {
@@ -650,6 +652,38 @@ export default function PreparationsPage() {
             : "Validation et réservation impossibles.",
       });
     }
+  }
+
+
+  async function demarrerPreparation() {
+    if (!selection || selection.statut !== "VALIDEE") return;
+
+    const response = await fetch(
+      `${API_URL}/api/preparations/${selection.id}/demarrer`,
+      {
+        method: "POST",
+        headers: entetesAuthentifiees(),
+      }
+    );
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      setToast({
+        type: "error",
+        message:
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Démarrage impossible.",
+      });
+      return;
+    }
+
+    await actualiserSelection(data);
+    setToast({
+      type: "success",
+      message: "Préparation démarrée.",
+    });
   }
 
   async function supprimerPreparation() {
@@ -1337,6 +1371,30 @@ export default function PreparationsPage() {
               </SectionCard>
             )}
 
+            {(selection.statut === "EN_PREPARATION" ||
+              selection.statut === "PRETE") && (
+              <section className={styles.executionProgress}>
+                <div>
+                  <span>Avancement</span>
+                  <strong>{progression(selection)} %</strong>
+                </div>
+                <div className={styles.progressTrack}>
+                  <div
+                    className={styles.progressValue}
+                    style={{ width: `${progression(selection)}%` }}
+                  />
+                </div>
+                <small>
+                  {
+                    selection.lignes.filter(
+                      (ligne) => ligne.statut === "PREPAREE"
+                    ).length
+                  }{" "}
+                  / {selection.lignes.length} lignes complètes
+                </small>
+              </section>
+            )}
+
             <SectionCard
               title="Ordre de préparation"
               description="Saisie directe des quantités et suivi des écarts."
@@ -1353,7 +1411,7 @@ export default function PreparationsPage() {
                       <th>Demandé</th>
                       <th>Manquant</th>
                       <th>Commentaire</th>
-                      {editable && <th aria-label="Actions" />}
+                      {(editable || executionActive) && <th aria-label="Actions" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -1431,7 +1489,7 @@ export default function PreparationsPage() {
                             "—"
                           )}
                         </td>
-                        {editable && (
+                        {(editable || executionActive) && (
                           <td>
                             <div className={styles.rowActions}>
                               {selection.statut === "EN_PREPARATION" && (
@@ -1529,20 +1587,24 @@ export default function PreparationsPage() {
                                 </>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={() => editerLigne(ligne)}
-                                title="Modifier le besoin"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => supprimerLigne(ligne)}
-                                title="Supprimer la ligne"
-                              >
-                                <Trash2 size={15} />
-                              </button>
+                              {editable && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => editerLigne(ligne)}
+                                    title="Modifier le besoin"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => supprimerLigne(ligne)}
+                                    title="Supprimer la ligne"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         )}
@@ -1592,8 +1654,19 @@ export default function PreparationsPage() {
                 </Button>
               )}
               {selection.statut === "VALIDEE" && (
+                <Button onClick={demarrerPreparation}>
+                  <Play size={17} />
+                  Démarrer la préparation
+                </Button>
+              )}
+              {selection.statut === "EN_PREPARATION" && (
                 <span className={styles.lockedMessage}>
-                  Préparation validée — réservations actives
+                  Préparation en cours
+                </span>
+              )}
+              {selection.statut === "PRETE" && (
+                <span className={styles.readyMessage}>
+                  Préparation complète et prête
                 </span>
               )}
             </ActionBar>
