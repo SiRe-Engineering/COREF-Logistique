@@ -190,6 +190,8 @@ def _retirer(stock, quantite: Decimal, libelle: str) -> None:
 def executer_mouvement(
     db: Session,
     payload: MouvementCreate,
+    *,
+    valider_transaction: bool = True,
 ) -> MouvementStock:
     article = _charger_article(db, payload.article_id)
     lot = _charger_lot(db, article, payload.lot_id)
@@ -313,15 +315,21 @@ def executer_mouvement(
 
         mouvement = MouvementStock(**donnees)
         db.add(mouvement)
-        db.commit()
-        db.refresh(mouvement)
+        db.flush()
+
+        if valider_transaction:
+            db.commit()
+            db.refresh(mouvement)
+
         return mouvement
 
     except HTTPException:
-        db.rollback()
+        if valider_transaction:
+            db.rollback()
         raise
     except Exception:
-        db.rollback()
+        if valider_transaction:
+            db.rollback()
         raise
 
 

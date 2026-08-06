@@ -577,20 +577,53 @@ def terminer_preparation(
     return charger_preparation(db, preparation_id)
 
 
-@router.post("/{preparation_id}/expedier", response_model=PreparationRead)
+@router.post(
+    "/{preparation_id}/expedier",
+    response_model=PreparationRead,
+)
 def expedier_preparation(
     preparation_id: int,
     db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
 ) -> Preparation:
     preparation = charger_preparation(db, preparation_id)
+
+    if preparation.statut == "EXPEDIEE":
+        raise HTTPException(
+            status_code=409,
+            detail="Cette préparation a déjà été expédiée.",
+        )
+
     if preparation.statut != "PRETE":
         raise HTTPException(
             status_code=409,
             detail="La préparation doit être prête avant expédition.",
         )
 
+    if not preparation.lignes:
+        raise HTTPException(
+            status_code=422,
+            detail="Une préparation vide ne peut pas être expédiée.",
+        )
+
+    lignes_non_pretes = [
+        ligne
+        for ligne in preparation.lignes
+        if ligne.statut != "PREPAREE"
+        or ligne.quantite_preparee <= Decimal("0")
+    ]
+    if lignes_non_pretes:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Toutes les lignes doivent être entièrement préparées "
+                "avant l’expédition."
+            ),
+        )
+
     try:
-        # Libération des réservations avant sortie, dans la même opération.
+        # La libération et toutes les sorties appartiennent à la même
+        # transaction. Aucun commit intermédiaire n'est autorisé.
         liberer_reservations_preparation(db, preparation)
 
         for ligne in preparation.lignes:
@@ -614,17 +647,25 @@ def expedier_preparation(
                 if remplacement_accepte
                 else ligne.emplacement_source_id
             )
-            quantite_sortie = (
-                ligne.quantite_remplacement
-                if remplacement_accepte
-                else ligne.quantite_preparee
-            )
+
+            # La quantité sortie est toujours la quantité physiquement
+            # préparée. Le besoin initial reste conservé pour la traçabilité.
+            quantite_sortie = ligne.quantite_preparee
+
+            if emplacement_sortie_id is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"{ligne.article.reference} : "
+                        "emplacement source manquant."
+                    ),
+                )
 
             commentaire_sortie = ligne.commentaire
             if remplacement_accepte:
                 commentaire_sortie = (
                     f"Article demandé : {ligne.article.reference}. "
-                    f"Article sorti : "
+                    f"Article expédié : "
                     f"{ligne.article_remplacement.reference}. "
                     f"{ligne.commentaire_remplacement or ''}"
                 ).strip()
@@ -638,29 +679,43 @@ def expedier_preparation(
                 quantite=quantite_sortie,
                 motif=f"Expédition {preparation.reference}",
                 commentaire=commentaire_sortie,
-                operateur=preparation.preparateur,
+                operateur=(
+                    preparation.preparateur
+                    or utilisateur.nom_complet
+                ),
                 charge_affaires=preparation.affaire.charge_affaires,
                 zone_intervention=preparation.affaire.zone_intervention,
                 vehicule=preparation.vehicule,
                 sortie_libre=False,
             )
-            executer_mouvement(db, mouvement)
+            executer_mouvement(
+                db,
+                mouvement,
+                valider_transaction=False,
+            )
 
-        preparation = charger_preparation(db, preparation_id)
+            ligne.statut = "EXPEDIEE"
+
         preparation.statut = "EXPEDIEE"
         preparation.date_expedition = datetime.now(timezone.utc)
-        for ligne in preparation.lignes:
-            ligne.statut = "EXPEDIEE"
 
         notifier_acteurs(
             db,
             preparation,
             "Préparation expédiée",
-            f"{preparation.reference} a été expédiée et sortie du stock.",
+            (
+                f"{preparation.reference} a été expédiée. "
+                "Les stocks physiques ont été décrémentés."
+            ),
         )
+
         db.commit()
         return charger_preparation(db, preparation_id)
+
     except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
         db.rollback()
         raise
 

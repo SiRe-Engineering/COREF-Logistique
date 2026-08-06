@@ -686,6 +686,59 @@ export default function PreparationsPage() {
     });
   }
 
+
+  async function expedierPreparation() {
+    if (!selection || selection.statut !== "PRETE") return;
+
+    if (
+      !window.confirm(
+        `Expédier ${selection.reference} ?\n\n` +
+          "Cette action va :\n" +
+          "• décrémenter les stocks physiques ;\n" +
+          "• libérer les réservations ;\n" +
+          "• créer les mouvements de sortie.\n\n" +
+          "Elle ne pourra pas être exécutée une seconde fois."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/expedier`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees(),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Expédition impossible."
+        );
+      }
+
+      await actualiserSelection(data);
+      setToast({
+        type: "success",
+        message:
+          "Préparation expédiée et mouvements de sortie créés.",
+      });
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Expédition impossible.",
+      });
+    }
+  }
+
   async function supprimerPreparation() {
     if (!selection || !adminTechnique) return;
     if (!window.confirm(`Supprimer définitivement ${selection.reference} ?`)) return;
@@ -1665,8 +1718,14 @@ export default function PreparationsPage() {
                 </span>
               )}
               {selection.statut === "PRETE" && (
-                <span className={styles.readyMessage}>
-                  Préparation complète et prête
+                <Button onClick={expedierPreparation}>
+                  <Send size={17} />
+                  Expédier
+                </Button>
+              )}
+              {selection.statut === "EXPEDIEE" && (
+                <span className={styles.shippedMessage}>
+                  Préparation expédiée
                 </span>
               )}
             </ActionBar>
