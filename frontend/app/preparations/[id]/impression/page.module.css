@@ -236,14 +236,11 @@
   .page {
     max-width: none;
     padding: 0;
+    background: white;
   }
 
   .screenActions {
     display: none;
-  }
-
-  body {
-    background: white !important;
   }
 
   .table {
