@@ -86,6 +86,9 @@ class LignePreparation(Base):
             "'PREPAREE', "
             "'PARTIELLE', "
             "'INDISPONIBLE', "
+            "'REMPLACEMENT_PROPOSE', "
+            "'REMPLACEMENT_ACCEPTE', "
+            "'REMPLACEMENT_REFUSE', "
             "'EXPEDIEE'"
             ")",
             name="ck_lignes_preparation_statut_execution",
@@ -135,8 +138,84 @@ class LignePreparation(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    article_remplacement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("articles.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    lot_remplacement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lots_beton.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    emplacement_remplacement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("emplacements.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    quantite_remplacement: Mapped[Decimal | None] = mapped_column(
+        Numeric(14, 3),
+        nullable=True,
+    )
+    commentaire_remplacement: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    propose_par: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    date_proposition_remplacement: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    decision_remplacement: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+    decision_par: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    commentaire_decision: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    date_decision_remplacement: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
-    preparation = relationship("Preparation", back_populates="lignes")
-    article = relationship("Article", lazy="joined")
-    lot = relationship("LotBeton", lazy="joined")
-    emplacement_source = relationship("Emplacement", lazy="joined")
+    preparation = relationship(
+        "Preparation",
+        back_populates="lignes",
+    )
+    article = relationship(
+        "Article",
+        foreign_keys=[article_id],
+        lazy="joined",
+    )
+    article_remplacement = relationship(
+        "Article",
+        foreign_keys=[article_remplacement_id],
+        lazy="joined",
+    )
+    lot = relationship(
+        "LotBeton",
+        foreign_keys=[lot_id],
+        lazy="joined",
+    )
+    lot_remplacement = relationship(
+        "LotBeton",
+        foreign_keys=[lot_remplacement_id],
+        lazy="joined",
+    )
+    emplacement_source = relationship(
+        "Emplacement",
+        foreign_keys=[emplacement_source_id],
+        lazy="joined",
+    )
+    emplacement_remplacement = relationship(
+        "Emplacement",
+        foreign_keys=[emplacement_remplacement_id],
+        lazy="joined",
+    )

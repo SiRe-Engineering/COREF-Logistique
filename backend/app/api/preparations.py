@@ -6,15 +6,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.affaire import Affaire
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton
 from app.models.preparation import LignePreparation, Preparation
+from app.models.utilisateur import Utilisateur
 from app.schemas.mouvement import MouvementCreate
 from app.schemas.preparation import (
+    DecisionRemplacementCreate,
     LignePreparationCreate,
+    PropositionRemplacementCreate,
     LignePreparationUpdate,
     PreparationCreate,
     PreparationRead,
@@ -36,6 +40,9 @@ STATUTS_LIGNE_AUTORISES = {
     "PREPAREE",
     "PARTIELLE",
     "INDISPONIBLE",
+    "REMPLACEMENT_PROPOSE",
+    "REMPLACEMENT_ACCEPTE",
+    "REMPLACEMENT_REFUSE",
     "EXPEDIEE",
 }
 
@@ -46,7 +53,12 @@ def recalculer_ligne(ligne: LignePreparation) -> None:
         Decimal("0"),
     )
 
-    if ligne.statut == "EXPEDIEE":
+    if ligne.statut in {
+        "REMPLACEMENT_PROPOSE",
+        "REMPLACEMENT_ACCEPTE",
+        "REMPLACEMENT_REFUSE",
+        "EXPEDIEE",
+    }:
         return
 
     if ligne.quantite_preparee >= ligne.quantite_demandee:
@@ -633,3 +645,241 @@ def expedier_preparation(
     except HTTPException:
         db.rollback()
         raise
+
+
+ROLES_DECISION_REMPLACEMENT = {
+    "ADMINISTRATEUR_TECHNIQUE",
+    "ADMINISTRATEUR_COREF",
+    "RESPONSABLE_LOGISTIQUE",
+    "RESPONSABLE_PRODUCTION",
+    "CHARGE_AFFAIRES",
+}
+
+
+def verifier_decision_remplacement(
+    preparation: Preparation,
+    utilisateur: Utilisateur,
+) -> None:
+    est_demandeur = (
+        preparation.demandeur is not None
+        and preparation.demandeur.strip().casefold()
+        == utilisateur.nom_complet.strip().casefold()
+    )
+    if (
+        not est_demandeur
+        and utilisateur.role not in ROLES_DECISION_REMPLACEMENT
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Seul le demandeur ou un responsable autorisé peut décider."
+            ),
+        )
+
+
+@router.post(
+    "/{preparation_id}/lignes/{ligne_id}/remplacement",
+    response_model=PreparationRead,
+)
+def proposer_remplacement(
+    preparation_id: int,
+    ligne_id: int,
+    payload: PropositionRemplacementCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
+) -> Preparation:
+    preparation = charger_preparation(db, preparation_id)
+    ligne = next(
+        (element for element in preparation.lignes if element.id == ligne_id),
+        None,
+    )
+    if ligne is None:
+        raise HTTPException(status_code=404, detail="Ligne introuvable.")
+    if preparation.statut != "EN_PREPARATION":
+        raise HTTPException(
+            status_code=409,
+            detail="La préparation doit être en cours.",
+        )
+    if ligne.statut not in {"INDISPONIBLE", "REMPLACEMENT_REFUSE"}:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Un remplacement ne peut être proposé que pour une ligne "
+                "indisponible ou après un refus."
+            ),
+        )
+
+    article = db.get(Article, payload.article_remplacement_id)
+    if article is None or not article.actif:
+        raise HTTPException(
+            status_code=404,
+            detail="Article de remplacement introuvable.",
+        )
+    if article.id == ligne.article_id:
+        raise HTTPException(
+            status_code=422,
+            detail="L’article de remplacement doit être différent.",
+        )
+
+    emplacement = db.get(
+        Emplacement,
+        payload.emplacement_remplacement_id,
+    )
+    if emplacement is None or not emplacement.actif:
+        raise HTTPException(
+            status_code=404,
+            detail="Emplacement de remplacement introuvable.",
+        )
+
+    if article_est_beton(db, article):
+        if payload.lot_remplacement_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Un lot est obligatoire pour un béton de remplacement.",
+            )
+        lot = db.get(LotBeton, payload.lot_remplacement_id)
+        if lot is None or lot.article_id != article.id:
+            raise HTTPException(
+                status_code=422,
+                detail="Le lot ne correspond pas à l’article proposé.",
+            )
+    elif payload.lot_remplacement_id is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Aucun lot n’est attendu pour cet article.",
+        )
+
+    ligne.article_remplacement_id = article.id
+    ligne.lot_remplacement_id = payload.lot_remplacement_id
+    ligne.emplacement_remplacement_id = (
+        payload.emplacement_remplacement_id
+    )
+    ligne.quantite_remplacement = payload.quantite_remplacement
+    ligne.commentaire_remplacement = (
+        payload.commentaire_remplacement.strip()
+    )
+    ligne.propose_par = utilisateur.nom_complet
+    ligne.date_proposition_remplacement = datetime.now(timezone.utc)
+    ligne.decision_remplacement = None
+    ligne.decision_par = None
+    ligne.commentaire_decision = None
+    ligne.date_decision_remplacement = None
+    ligne.statut = "REMPLACEMENT_PROPOSE"
+
+    creer_notification(
+        db,
+        preparation.demandeur,
+        "Remplacement à valider",
+        (
+            f"{preparation.reference} — {ligne.article.reference} : "
+            f"{article.reference} est proposé en remplacement."
+        ),
+        f"/preparations?preparation={preparation.id}",
+        "ACTION",
+    )
+
+    db.commit()
+    return charger_preparation(db, preparation_id)
+
+
+@router.post(
+    "/{preparation_id}/lignes/{ligne_id}/remplacement/accepter",
+    response_model=PreparationRead,
+)
+def accepter_remplacement(
+    preparation_id: int,
+    ligne_id: int,
+    payload: DecisionRemplacementCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
+) -> Preparation:
+    preparation = charger_preparation(db, preparation_id)
+    verifier_decision_remplacement(preparation, utilisateur)
+
+    ligne = next(
+        (element for element in preparation.lignes if element.id == ligne_id),
+        None,
+    )
+    if ligne is None:
+        raise HTTPException(status_code=404, detail="Ligne introuvable.")
+    if ligne.statut != "REMPLACEMENT_PROPOSE":
+        raise HTTPException(
+            status_code=409,
+            detail="Aucun remplacement n’est en attente.",
+        )
+
+    ligne.decision_remplacement = "ACCEPTEE"
+    ligne.decision_par = utilisateur.nom_complet
+    ligne.commentaire_decision = payload.commentaire_decision
+    ligne.date_decision_remplacement = datetime.now(timezone.utc)
+    ligne.statut = "REMPLACEMENT_ACCEPTE"
+
+    if preparation.preparateur:
+        creer_notification(
+            db,
+            preparation.preparateur,
+            "Remplacement accepté",
+            (
+                f"{preparation.reference} — le remplacement proposé pour "
+                f"{ligne.article.reference} a été accepté."
+            ),
+            f"/preparations?preparation={preparation.id}",
+            "INFORMATION",
+        )
+
+    db.commit()
+    return charger_preparation(db, preparation_id)
+
+
+@router.post(
+    "/{preparation_id}/lignes/{ligne_id}/remplacement/refuser",
+    response_model=PreparationRead,
+)
+def refuser_remplacement(
+    preparation_id: int,
+    ligne_id: int,
+    payload: DecisionRemplacementCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
+) -> Preparation:
+    preparation = charger_preparation(db, preparation_id)
+    verifier_decision_remplacement(preparation, utilisateur)
+
+    ligne = next(
+        (element for element in preparation.lignes if element.id == ligne_id),
+        None,
+    )
+    if ligne is None:
+        raise HTTPException(status_code=404, detail="Ligne introuvable.")
+    if ligne.statut != "REMPLACEMENT_PROPOSE":
+        raise HTTPException(
+            status_code=409,
+            detail="Aucun remplacement n’est en attente.",
+        )
+    if not (payload.commentaire_decision or "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Un commentaire est obligatoire pour refuser.",
+        )
+
+    ligne.decision_remplacement = "REFUSEE"
+    ligne.decision_par = utilisateur.nom_complet
+    ligne.commentaire_decision = payload.commentaire_decision.strip()
+    ligne.date_decision_remplacement = datetime.now(timezone.utc)
+    ligne.statut = "REMPLACEMENT_REFUSE"
+
+    if preparation.preparateur:
+        creer_notification(
+            db,
+            preparation.preparateur,
+            "Remplacement refusé",
+            (
+                f"{preparation.reference} — le remplacement proposé pour "
+                f"{ligne.article.reference} a été refusé."
+            ),
+            f"/preparations?preparation={preparation.id}",
+            "ALERTE",
+        )
+
+    db.commit()
+    return charger_preparation(db, preparation_id)

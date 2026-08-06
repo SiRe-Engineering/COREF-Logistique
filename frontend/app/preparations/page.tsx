@@ -1155,10 +1155,43 @@ export default function PreparationsPage() {
                           {ligne.article.unite}
                         </td>
                         <td className={styles.commentCell}>
-                          {ligne.motif_ecart ||
+                          {ligne.article_remplacement ? (
+                            <div className={styles.replacementSummary}>
+                              <strong>
+                                {ligne.article_remplacement.reference} —{" "}
+                                {ligne.article_remplacement.designation}
+                              </strong>
+                              <span>
+                                {ligne.quantite_remplacement}{" "}
+                                {ligne.article_remplacement.unite}
+                                {" — "}
+                                {ligne.emplacement_remplacement?.nom ??
+                                  "Emplacement non défini"}
+                              </span>
+                              {ligne.lot_remplacement && (
+                                <small>
+                                  Lot :{" "}
+                                  {ligne.lot_remplacement.numero_lot_fournisseur}
+                                </small>
+                              )}
+                              <small>
+                                {ligne.commentaire_remplacement}
+                              </small>
+                              {ligne.decision_par && (
+                                <small>
+                                  Décision : {ligne.decision_par}
+                                  {ligne.commentaire_decision
+                                    ? ` — ${ligne.commentaire_decision}`
+                                    : ""}
+                                </small>
+                              )}
+                            </div>
+                          ) : (
+                            ligne.motif_ecart ||
                             ligne.commentaire_preparateur ||
                             ligne.commentaire ||
-                            "—"}
+                            "—"
+                          )}
                         </td>
                         {editable && (
                           <td>
@@ -1220,6 +1253,44 @@ export default function PreparationsPage() {
                                   </button>
                                 </>
                               )}
+                              {["INDISPONIBLE", "REMPLACEMENT_REFUSE"].includes(
+                                ligne.statut
+                              ) && (
+                                <button
+                                  type="button"
+                                  className={styles.replaceButton}
+                                  onClick={() => proposerRemplacement(ligne)}
+                                  title="Proposer un remplacement"
+                                >
+                                  ↻
+                                </button>
+                              )}
+
+                              {ligne.statut === "REMPLACEMENT_PROPOSE" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className={styles.acceptButton}
+                                    onClick={() =>
+                                      deciderRemplacement(ligne, "accepter")
+                                    }
+                                    title="Accepter le remplacement"
+                                  >
+                                    ✓R
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.rejectButton}
+                                    onClick={() =>
+                                      deciderRemplacement(ligne, "refuser")
+                                    }
+                                    title="Refuser le remplacement"
+                                  >
+                                    ✕R
+                                  </button>
+                                </>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => editerLigne(ligne)}

@@ -313,3 +313,47 @@
     justify-content: flex-start;
   }
 }
+
+
+.replacementSummary {
+  display: grid;
+  gap: 3px;
+  min-width: 220px;
+}
+
+.replacementSummary strong {
+  color: var(--text);
+  font-size: .78rem;
+}
+
+.replacementSummary span,
+.replacementSummary small {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.replaceButton {
+  border-color: #b2ddff !important;
+  background: #eff8ff !important;
+  color: #175cd3;
+  font-weight: 800;
+}
+
+.acceptButton,
+.rejectButton {
+  width: 42px !important;
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.acceptButton {
+  border-color: #b7ebc6 !important;
+  background: #ecfdf3 !important;
+  color: #027a48;
+}
+
+.rejectButton {
+  border-color: #fda29b !important;
+  background: #fef3f2 !important;
+  color: #b42318;
+}

@@ -53,6 +53,18 @@ class LignePreparationCreate(BaseModel):
     commentaire: str | None = Field(default=None, max_length=255)
 
 
+class PropositionRemplacementCreate(BaseModel):
+    article_remplacement_id: int
+    lot_remplacement_id: int | None = None
+    emplacement_remplacement_id: int
+    quantite_remplacement: Decimal = Field(gt=0)
+    commentaire_remplacement: str = Field(min_length=3, max_length=1000)
+
+
+class DecisionRemplacementCreate(BaseModel):
+    commentaire_decision: str | None = Field(default=None, max_length=1000)
+
+
 class LignePreparationUpdate(BaseModel):
     lot_id: int | None = None
     emplacement_source_id: int | None = None
@@ -78,6 +90,20 @@ class LignePreparationRead(BaseModel):
     motif_ecart: str | None
     date_debut_preparation: datetime | None
     date_fin_preparation: datetime | None
+    article_remplacement_id: int | None
+    lot_remplacement_id: int | None
+    emplacement_remplacement_id: int | None
+    quantite_remplacement: Decimal | None
+    commentaire_remplacement: str | None
+    propose_par: str | None
+    date_proposition_remplacement: datetime | None
+    decision_remplacement: str | None
+    decision_par: str | None
+    commentaire_decision: str | None
+    date_decision_remplacement: datetime | None
+    article_remplacement: ArticlePreparationRead | None
+    lot_remplacement: LotPreparationRead | None
+    emplacement_remplacement: EmplacementPreparationRead | None
     article: ArticlePreparationRead
     lot: LotPreparationRead | None
     emplacement_source: EmplacementPreparationRead | None
