@@ -6,8 +6,8 @@ import {
   CircleGauge,
   PackageCheck,
   Plus,
+  RotateCcw,
   Search,
-  Trash2,
   Warehouse,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -102,7 +102,8 @@ function statutStock(stock: Stock) {
 
 export default function StocksPage() {
   const { utilisateur } = useAuth();
-  const adminTechnique = utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
+  const adminTechnique =
+    utilisateur?.role === "ADMINISTRATEUR_TECHNIQUE";
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
@@ -280,34 +281,57 @@ export default function StocksPage() {
   }
 
 
-  async function supprimerStock(stock: Stock) {
-    if (
-      !window.confirm(
-        `Supprimer le stock ${stock.article.reference} à ${stock.emplacement.nom} ?`
-      )
-    ) return;
+  async function remettreAZero(stock: Stock) {
+    if (!adminTechnique) return;
+
+    const confirmation = window.confirm(
+      `Remettre entièrement à zéro le stock ${stock.article.reference} ` +
+        `à ${stock.emplacement.nom} ?\n\n` +
+        "Cette opération mettra à zéro :\n" +
+        "• le stock physique article ;\n" +
+        "• le stock réservé article ;\n" +
+        "• tous les stocks de lots associés ;\n" +
+        "• toutes les réservations actives sur cet article et cet emplacement."
+    );
+
+    if (!confirmation) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/stocks/${stock.id}`, {
-        method: "DELETE",
-        headers: entetesAuthentifiees(),
-      });
+      const response = await fetch(
+        `${API_URL}/api/stocks/${stock.id}/remise-a-zero`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees(),
+        }
+      );
+
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          typeof data?.detail === "string" ? data.detail : "Suppression impossible."
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Remise à zéro impossible."
         );
       }
+
+      setToast({
+        type: "success",
+        message:
+          "Stock article, stocks de lots et réservations remis à zéro.",
+      });
+
       if (selection?.id === stock.id) {
-        setSelection(null);
         setReservations([]);
       }
-      setToast({ type: "success", message: "Stock supprimé." });
+
       await charger();
     } catch (cause) {
       setToast({
         type: "error",
-        message: cause instanceof Error ? cause.message : "Suppression impossible.",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Remise à zéro impossible.",
       });
     }
   }
@@ -470,14 +494,14 @@ export default function StocksPage() {
                       <td>
                         <button
                           type="button"
-                          className="icon-button danger"
-                          title="Supprimer ce stock"
+                          className="icon-button"
+                          title="Remettre ce stock à zéro"
                           onClick={(event) => {
                             event.stopPropagation();
-                            supprimerStock(stock);
+                            remettreAZero(stock);
                           }}
                         >
-                          <Trash2 size={15} />
+                          <RotateCcw size={15} />
                         </button>
                       </td>
                     )}

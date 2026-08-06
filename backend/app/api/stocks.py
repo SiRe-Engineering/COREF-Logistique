@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,6 +12,7 @@ from app.models.emplacement import Emplacement
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton, StockLot
 from app.models.stock import Stock
+from app.models.reservation import ReservationStock
 from app.models.utilisateur import Utilisateur
 from app.schemas.stock import StockRead, StockResume, StockSet
 
@@ -268,33 +270,51 @@ def definir_stock(
 
 
 
-@router.delete("/{stock_id}", status_code=204)
-def supprimer_stock(
+@router.post("/{stock_id}/remise-a-zero", response_model=StockRead)
+def remettre_stock_a_zero(
     stock_id: int,
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(
         exiger_roles("ADMINISTRATEUR_TECHNIQUE")
     ),
-) -> None:
+) -> Stock:
     stock = db.scalar(
         select(Stock)
         .where(Stock.id == stock_id)
         .with_for_update(of=Stock)
     )
     if stock is None:
-        raise HTTPException(status_code=404, detail="Ligne de stock introuvable.")
-
-    if (stock.quantite_reservee or Decimal("0")) > 0:
         raise HTTPException(
-            status_code=409,
-            detail="Cette ligne possède encore une quantité réservée.",
+            status_code=404,
+            detail="Ligne de stock introuvable.",
         )
 
     article = db.get(Article, stock.article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail="Article associé introuvable.")
+        raise HTTPException(
+            status_code=404,
+            detail="Article associé introuvable.",
+        )
 
     try:
+        reservations = list(
+            db.scalars(
+                select(ReservationStock)
+                .where(
+                    ReservationStock.article_id == stock.article_id,
+                    ReservationStock.emplacement_id
+                    == stock.emplacement_id,
+                    ReservationStock.statut == "ACTIVE",
+                )
+                .with_for_update(of=ReservationStock)
+            ).all()
+        )
+
+        now = datetime.now(timezone.utc)
+        for reservation in reservations:
+            reservation.statut = "LIBEREE"
+            reservation.date_liberation = now
+
         if article_est_beton(db, article):
             stocks_lots = list(
                 db.scalars(
@@ -308,20 +328,16 @@ def supprimer_stock(
                 ).all()
             )
 
-            if any(
-                (ligne.quantite_reservee or Decimal("0")) > 0
-                for ligne in stocks_lots
-            ):
-                raise HTTPException(
-                    status_code=409,
-                    detail="Un lot associé possède encore une réservation.",
-                )
-
             for stock_lot in stocks_lots:
-                db.delete(stock_lot)
+                stock_lot.quantite_physique = Decimal("0")
+                stock_lot.quantite_reservee = Decimal("0")
 
-        db.delete(stock)
+        stock.quantite_physique = Decimal("0")
+        stock.quantite_reservee = Decimal("0")
+
         db.commit()
-    except HTTPException:
+        db.refresh(stock)
+        return stock
+    except Exception:
         db.rollback()
         raise
