@@ -12,6 +12,7 @@ from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton
+from app.models.mouvement import MouvementStock
 from app.models.preparation import LignePreparation, Preparation
 from app.models.reservation import Notification
 from app.models.utilisateur import Utilisateur
@@ -19,6 +20,9 @@ from app.schemas.mouvement import MouvementCreate
 from app.schemas.preparation import (
     DecisionRemplacementCreate,
     LignePreparationCreate,
+    LigneRetourDisponibleRead,
+    RetourPreparationCreate,
+    RetourPreparationRead,
     PropositionRemplacementCreate,
     LignePreparationUpdate,
     PreparationCreate,
@@ -675,6 +679,8 @@ def expedier_preparation(
                 article_id=article_sorti_id,
                 lot_id=lot_sorti_id,
                 affaire_id=preparation.affaire_id,
+                preparation_id=preparation.id,
+                ligne_preparation_id=ligne.id,
                 emplacement_source_id=emplacement_sortie_id,
                 quantite=quantite_sortie,
                 motif=f"Expédition {preparation.reference}",
@@ -972,3 +978,257 @@ def refuser_remplacement(
 
     db.commit()
     return charger_preparation(db, preparation_id)
+
+
+
+@router.get(
+    "/{preparation_id}/retours/disponibles",
+    response_model=list[LigneRetourDisponibleRead],
+)
+def lister_retours_disponibles(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+) -> list[LigneRetourDisponibleRead]:
+    preparation = charger_preparation(db, preparation_id)
+
+    if preparation.statut != "EXPEDIEE":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Les retours ne sont disponibles que pour une "
+                "préparation expédiée."
+            ),
+        )
+
+    resultat: list[LigneRetourDisponibleRead] = []
+
+    for ligne in preparation.lignes:
+        sorties = list(
+            db.scalars(
+                select(MouvementStock).where(
+                    MouvementStock.preparation_id == preparation.id,
+                    MouvementStock.ligne_preparation_id == ligne.id,
+                    MouvementStock.type == "SORTIE",
+                    MouvementStock.annule.is_(False),
+                )
+            ).all()
+        )
+        retours = list(
+            db.scalars(
+                select(MouvementStock).where(
+                    MouvementStock.preparation_id == preparation.id,
+                    MouvementStock.ligne_preparation_id == ligne.id,
+                    MouvementStock.type == "RETOUR",
+                    MouvementStock.annule.is_(False),
+                )
+            ).all()
+        )
+
+        quantite_expediee = sum(
+            (mouvement.quantite for mouvement in sorties),
+            Decimal("0"),
+        )
+        quantite_retournee = sum(
+            (mouvement.quantite for mouvement in retours),
+            Decimal("0"),
+        )
+        quantite_retournable = max(
+            quantite_expediee - quantite_retournee,
+            Decimal("0"),
+        )
+
+        if quantite_retournable <= 0 or not sorties:
+            continue
+
+        mouvement_sortie = sorties[0]
+
+        resultat.append(
+            LigneRetourDisponibleRead(
+                ligne_preparation_id=ligne.id,
+                article_id=mouvement_sortie.article_id,
+                lot_id=mouvement_sortie.lot_id,
+                article=mouvement_sortie.article,
+                lot=mouvement_sortie.lot,
+                quantite_expediee=quantite_expediee,
+                quantite_deja_retournee=quantite_retournee,
+                quantite_retournable=quantite_retournable,
+            )
+        )
+
+    return resultat
+
+
+@router.post(
+    "/{preparation_id}/retours",
+    response_model=RetourPreparationRead,
+)
+def enregistrer_retour_chantier(
+    preparation_id: int,
+    payload: RetourPreparationCreate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(utilisateur_courant),
+) -> RetourPreparationRead:
+    preparation = charger_preparation(db, preparation_id)
+
+    if preparation.statut != "EXPEDIEE":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Un retour ne peut être enregistré que sur une "
+                "préparation expédiée."
+            ),
+        )
+
+    lignes_par_id = {
+        ligne.id: ligne
+        for ligne in preparation.lignes
+    }
+    identifiants = [
+        item.ligne_preparation_id
+        for item in payload.lignes
+    ]
+    if len(set(identifiants)) != len(identifiants):
+        raise HTTPException(
+            status_code=422,
+            detail="Une même ligne ne peut apparaître qu’une fois.",
+        )
+
+    total = Decimal("0")
+    mouvements_crees = 0
+
+    try:
+        for item in payload.lignes:
+            ligne = lignes_par_id.get(item.ligne_preparation_id)
+            if ligne is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Ligne de préparation introuvable.",
+                )
+
+            sorties = list(
+                db.scalars(
+                    select(MouvementStock)
+                    .where(
+                        MouvementStock.preparation_id
+                        == preparation.id,
+                        MouvementStock.ligne_preparation_id
+                        == ligne.id,
+                        MouvementStock.type == "SORTIE",
+                        MouvementStock.annule.is_(False),
+                    )
+                    .with_for_update(of=MouvementStock)
+                ).all()
+            )
+            if not sorties:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"{ligne.article.reference} : aucune sortie "
+                        "d’expédition n’a été trouvée."
+                    ),
+                )
+
+            retours = list(
+                db.scalars(
+                    select(MouvementStock)
+                    .where(
+                        MouvementStock.preparation_id
+                        == preparation.id,
+                        MouvementStock.ligne_preparation_id
+                        == ligne.id,
+                        MouvementStock.type == "RETOUR",
+                        MouvementStock.annule.is_(False),
+                    )
+                    .with_for_update(of=MouvementStock)
+                ).all()
+            )
+
+            quantite_expediee = sum(
+                (mouvement.quantite for mouvement in sorties),
+                Decimal("0"),
+            )
+            quantite_retournee = sum(
+                (mouvement.quantite for mouvement in retours),
+                Decimal("0"),
+            )
+            quantite_retournable = (
+                quantite_expediee - quantite_retournee
+            )
+
+            if item.quantite > quantite_retournable:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"{ligne.article.reference} : retour maximal "
+                        f"autorisé {quantite_retournable}."
+                    ),
+                )
+
+            sortie_reference = sorties[0]
+            commentaire = item.commentaire
+            if not commentaire:
+                commentaire = (
+                    f"Retour chantier lié à "
+                    f"{preparation.reference}"
+                )
+
+            mouvement = MouvementCreate(
+                type="RETOUR",
+                article_id=sortie_reference.article_id,
+                lot_id=sortie_reference.lot_id,
+                affaire_id=preparation.affaire_id,
+                preparation_id=preparation.id,
+                ligne_preparation_id=ligne.id,
+                emplacement_destination_id=(
+                    item.emplacement_destination_id
+                ),
+                quantite=item.quantite,
+                motif=f"Retour {preparation.reference}",
+                commentaire=commentaire,
+                operateur=(
+                    payload.operateur
+                    or utilisateur.nom_complet
+                ),
+                charge_affaires=(
+                    preparation.affaire.charge_affaires
+                ),
+                zone_intervention=(
+                    preparation.affaire.zone_intervention
+                ),
+                vehicule=preparation.vehicule,
+                sortie_libre=False,
+            )
+            executer_mouvement(
+                db,
+                mouvement,
+                valider_transaction=False,
+            )
+
+            total += item.quantite
+            mouvements_crees += 1
+
+        notifier_acteurs(
+            db,
+            preparation,
+            "Retour chantier enregistré",
+            (
+                f"{total} unité(s) ont été réintégrées en stock "
+                f"pour {preparation.reference}."
+            ),
+        )
+
+        db.commit()
+
+        return RetourPreparationRead(
+            preparation_id=preparation.id,
+            reference_preparation=preparation.reference,
+            mouvements_crees=mouvements_crees,
+            quantite_totale_retournee=total,
+        )
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise

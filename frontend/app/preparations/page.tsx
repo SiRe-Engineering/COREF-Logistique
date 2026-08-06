@@ -8,6 +8,7 @@ import {
   Play,
   Plus,
   Printer,
+  RotateCcw,
   Search,
   Send,
   Trash2,
@@ -80,6 +81,23 @@ type Ligne = {
   article: Article;
   lot: Lot | null;
   emplacement_source: Emplacement | null;
+};
+
+type LigneRetourDisponible = {
+  ligne_preparation_id: number;
+  article_id: number;
+  lot_id: number | null;
+  article: Article;
+  lot: Lot | null;
+  quantite_expediee: string;
+  quantite_deja_retournee: string;
+  quantite_retournable: string;
+};
+
+type LigneRetourForm = LigneRetourDisponible & {
+  quantite: string;
+  emplacement_destination_id: string;
+  commentaire: string;
 };
 
 type Preparation = {
@@ -208,6 +226,9 @@ export default function PreparationsPage() {
   const [recherche, setRecherche] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [retourOuvert, setRetourOuvert] = useState(false);
+  const [retourLignes, setRetourLignes] = useState<LigneRetourForm[]>([]);
+  const [retourEnregistrement, setRetourEnregistrement] = useState(false);
   const [editionEntete, setEditionEntete] = useState(false);
   const [ligneEditee, setLigneEditee] = useState<Ligne | null>(null);
   const [form, setForm] = useState(formulaireVide);
@@ -736,6 +757,161 @@ export default function PreparationsPage() {
             ? cause.message
             : "Expédition impossible.",
       });
+    }
+  }
+
+
+  async function ouvrirRetour() {
+    if (!selection || selection.statut !== "EXPEDIEE") return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/retours/disponibles`,
+        {
+          headers: entetesAuthentifiees(),
+        }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Chargement des retours impossible."
+        );
+      }
+
+      const lignes = (data as LigneRetourDisponible[]).map(
+        (ligne) => ({
+          ...ligne,
+          quantite: "",
+          emplacement_destination_id: "",
+          commentaire: "",
+        })
+      );
+
+      if (lignes.length === 0) {
+        setToast({
+          type: "error",
+          message:
+            "Toutes les quantités expédiées ont déjà été retournées.",
+        });
+        return;
+      }
+
+      setRetourLignes(lignes);
+      setRetourOuvert(true);
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Chargement des retours impossible.",
+      });
+    }
+  }
+
+  function modifierRetourLigne(
+    ligneId: number,
+    champ:
+      | "quantite"
+      | "emplacement_destination_id"
+      | "commentaire",
+    valeur: string
+  ) {
+    setRetourLignes((actuelles) =>
+      actuelles.map((ligne) =>
+        ligne.ligne_preparation_id === ligneId
+          ? { ...ligne, [champ]: valeur }
+          : ligne
+      )
+    );
+  }
+
+  async function enregistrerRetour(event: FormEvent) {
+    event.preventDefault();
+    if (!selection) return;
+
+    const lignes = retourLignes
+      .filter((ligne) => Number(ligne.quantite) > 0)
+      .map((ligne) => ({
+        ligne_preparation_id: ligne.ligne_preparation_id,
+        emplacement_destination_id: Number(
+          ligne.emplacement_destination_id
+        ),
+        quantite: Number(ligne.quantite.replace(",", ".")),
+        commentaire: ligne.commentaire.trim() || null,
+      }));
+
+    if (lignes.length === 0) {
+      setToast({
+        type: "error",
+        message: "Renseigne au moins une quantité à retourner.",
+      });
+      return;
+    }
+
+    if (
+      lignes.some(
+        (ligne) =>
+          !ligne.emplacement_destination_id ||
+          !Number.isFinite(ligne.quantite) ||
+          ligne.quantite <= 0
+      )
+    ) {
+      setToast({
+        type: "error",
+        message:
+          "Chaque retour doit avoir une quantité et un emplacement.",
+      });
+      return;
+    }
+
+    setRetourEnregistrement(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/preparations/${selection.id}/retours`,
+        {
+          method: "POST",
+          headers: entetesAuthentifiees({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            lignes,
+            operateur: utilisateur?.nom_complet ?? null,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Enregistrement du retour impossible."
+        );
+      }
+
+      setRetourOuvert(false);
+      setRetourLignes([]);
+      setToast({
+        type: "success",
+        message:
+          `${data.mouvements_crees} mouvement(s) de retour créé(s).`,
+      });
+      await actualiserSelection(selection);
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Enregistrement du retour impossible.",
+      });
+    } finally {
+      setRetourEnregistrement(false);
     }
   }
 
@@ -1724,14 +1900,150 @@ export default function PreparationsPage() {
                 </Button>
               )}
               {selection.statut === "EXPEDIEE" && (
-                <span className={styles.shippedMessage}>
-                  Préparation expédiée
-                </span>
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={ouvrirRetour}
+                  >
+                    <RotateCcw size={17} />
+                    Enregistrer un retour
+                  </Button>
+                  <span className={styles.shippedMessage}>
+                    Préparation expédiée
+                  </span>
+                </>
               )}
             </ActionBar>
           </div>
         )}
       </Drawer>
+
+      {retourOuvert && selection && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setRetourOuvert(false)}
+        >
+          <section
+            className={`modal-card ${styles.returnModal}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">Retour chantier</span>
+                <h2>{selection.reference}</h2>
+                <p>
+                  Seules les quantités réellement expédiées et non
+                  encore retournées sont disponibles.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={enregistrerRetour}>
+              <div className={styles.returnLines}>
+                {retourLignes.map((ligne) => (
+                  <article
+                    key={ligne.ligne_preparation_id}
+                    className={styles.returnLine}
+                  >
+                    <div className={styles.returnIdentity}>
+                      <strong>{ligne.article.designation}</strong>
+                      <span>{ligne.article.reference}</span>
+                      <small>
+                        Lot :{" "}
+                        {ligne.lot?.numero_lot_fournisseur ?? "—"}
+                      </small>
+                    </div>
+
+                    <div className={styles.returnAvailable}>
+                      <span>Retournable</span>
+                      <strong>
+                        {Number(
+                          ligne.quantite_retournable
+                        ).toLocaleString("fr-FR")}{" "}
+                        {ligne.article.unite}
+                      </strong>
+                    </div>
+
+                    <label className="field">
+                      <span>Quantité retournée</span>
+                      <input
+                        inputMode="decimal"
+                        value={ligne.quantite}
+                        placeholder="0"
+                        onChange={(event) =>
+                          modifierRetourLigne(
+                            ligne.ligne_preparation_id,
+                            "quantite",
+                            event.target.value
+                          )
+                        }
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Emplacement de retour</span>
+                      <select
+                        value={ligne.emplacement_destination_id}
+                        onChange={(event) =>
+                          modifierRetourLigne(
+                            ligne.ligne_preparation_id,
+                            "emplacement_destination_id",
+                            event.target.value
+                          )
+                        }
+                      >
+                        <option value="">Sélectionner</option>
+                        {emplacements.map((emplacement) => (
+                          <option
+                            key={emplacement.id}
+                            value={emplacement.id}
+                          >
+                            {emplacement.code} — {emplacement.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="field field-wide">
+                      <span>Commentaire</span>
+                      <input
+                        value={ligne.commentaire}
+                        placeholder="État, contrôle, origine du retour…"
+                        onChange={(event) =>
+                          modifierRetourLigne(
+                            ligne.ligne_preparation_id,
+                            "commentaire",
+                            event.target.value
+                          )
+                        }
+                      />
+                    </label>
+                  </article>
+                ))}
+              </div>
+
+              <div className="modal-actions">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setRetourOuvert(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={retourEnregistrement}
+                >
+                  <RotateCcw size={17} />
+                  {retourEnregistrement
+                    ? "Enregistrement…"
+                    : "Réintégrer en stock"}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {modalOuverte && (
         <div

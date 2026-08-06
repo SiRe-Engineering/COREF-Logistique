@@ -146,3 +146,34 @@ class PreparationRead(BaseModel):
     date_expedition: datetime | None
     affaire: AffairePreparationRead
     lignes: list[LignePreparationRead] = []
+
+
+
+class LigneRetourDisponibleRead(BaseModel):
+    ligne_preparation_id: int
+    article_id: int
+    lot_id: int | None
+    article: ArticlePreparationRead
+    lot: LotPreparationRead | None
+    quantite_expediee: Decimal
+    quantite_deja_retournee: Decimal
+    quantite_retournable: Decimal
+
+
+class LigneRetourCreate(BaseModel):
+    ligne_preparation_id: int
+    emplacement_destination_id: int
+    quantite: Decimal = Field(gt=0)
+    commentaire: str | None = Field(default=None, max_length=500)
+
+
+class RetourPreparationCreate(BaseModel):
+    lignes: list[LigneRetourCreate] = Field(min_length=1)
+    operateur: str | None = Field(default=None, max_length=120)
+
+
+class RetourPreparationRead(BaseModel):
+    preparation_id: int
+    reference_preparation: str
+    mouvements_crees: int
+    quantite_totale_retournee: Decimal

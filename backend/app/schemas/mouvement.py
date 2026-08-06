@@ -56,6 +56,8 @@ class MouvementCreate(BaseModel):
     article_id: int
     lot_id: int | None = None
     affaire_id: int | None = None
+    preparation_id: int | None = None
+    ligne_preparation_id: int | None = None
     emplacement_source_id: int | None = None
     emplacement_destination_id: int | None = None
     quantite: Decimal = Field(gt=0)
@@ -113,6 +115,8 @@ class MouvementRead(BaseModel):
     article_id: int
     lot_id: int | None
     affaire_id: int | None
+    preparation_id: int | None
+    ligne_preparation_id: int | None
     emplacement_source_id: int | None
     emplacement_destination_id: int | None
     quantite: Decimal

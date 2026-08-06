@@ -49,6 +49,16 @@ class MouvementStock(Base):
         index=True,
         nullable=True,
     )
+    preparation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("preparations.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
+    ligne_preparation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lignes_preparation.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
     emplacement_source_id: Mapped[int | None] = mapped_column(
         ForeignKey("emplacements.id", ondelete="RESTRICT"),
         index=True,
@@ -99,6 +109,16 @@ class MouvementStock(Base):
     article = relationship("Article", lazy="joined")
     lot = relationship("LotBeton", lazy="joined")
     affaire = relationship("Affaire", lazy="joined")
+    preparation = relationship(
+        "Preparation",
+        foreign_keys=[preparation_id],
+        lazy="joined",
+    )
+    ligne_preparation = relationship(
+        "LignePreparation",
+        foreign_keys=[ligne_preparation_id],
+        lazy="joined",
+    )
     emplacement_source = relationship(
         "Emplacement",
         foreign_keys=[emplacement_source_id],
