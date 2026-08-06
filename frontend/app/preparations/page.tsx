@@ -6,6 +6,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Printer,
   Search,
   Send,
   Trash2,
@@ -834,15 +835,31 @@ export default function PreparationsPage() {
                 </p>
               </div>
 
-              {editable && (
+              <div className={styles.identityActions}>
                 <Button
                   variant="secondary"
-                  onClick={() => setEditionEntete(!editionEntete)}
+                  onClick={() =>
+                    window.open(
+                      `/preparations/${selection.id}/impression`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
                 >
-                  <Pencil size={16} />
-                  Modifier la préparation
+                  <Printer size={16} />
+                  Imprimer
                 </Button>
-              )}
+
+                {editable && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditionEntete(!editionEntete)}
+                  >
+                    <Pencil size={16} />
+                    Modifier la préparation
+                  </Button>
+                )}
+              </div>
             </section>
 
             <section className={styles.metaGrid}>

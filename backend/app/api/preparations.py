@@ -122,6 +122,14 @@ def lister_preparations(db: Session = Depends(get_db)) -> list[Preparation]:
     )
 
 
+@router.get("/{preparation_id}", response_model=PreparationRead)
+def lire_preparation(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+) -> Preparation:
+    return charger_preparation(db, preparation_id)
+
+
 @router.post(
     "",
     response_model=PreparationRead,
