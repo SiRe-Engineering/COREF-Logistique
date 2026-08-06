@@ -12,8 +12,15 @@ import {
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Drawer } from "@/components/ui/Drawer";
+import {
+  ActionBar,
+  Button,
+  Drawer,
+  KpiCard,
+  KpiGrid,
+  SectionCard,
+  StatusBadge,
+} from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
 import styles from "./page.module.css";
 
@@ -59,8 +66,14 @@ type Ligne = {
   emplacement_source_id: number | null;
   quantite_demandee: string;
   quantite_preparee: string;
+  quantite_manquante: string;
   statut: string;
   commentaire: string | null;
+  motif_ecart: string | null;
+  commentaire_preparateur: string | null;
+  preparateur_effectif: string | null;
+  date_debut_preparation: string | null;
+  date_fin_preparation: string | null;
   article: Article;
   lot: Lot | null;
   emplacement_source: Emplacement | null;
@@ -144,6 +157,44 @@ function progression(preparation: Preparation) {
   );
 
   return demande > 0 ? Math.round((prepare / demande) * 100) : 0;
+}
+
+
+function tonStatutLigne(statut: string) {
+  if (["PREPAREE", "REMPLACEMENT_ACCEPTE", "EXPEDIEE"].includes(statut)) {
+    return "success" as const;
+  }
+  if (["PARTIELLE", "REMPLACEMENT_PROPOSE"].includes(statut)) {
+    return "warning" as const;
+  }
+  if (["INDISPONIBLE", "REMPLACEMENT_REFUSE"].includes(statut)) {
+    return "danger" as const;
+  }
+  if (statut === "EN_PREPARATION") return "information" as const;
+  return "pending" as const;
+}
+
+function tonStatutPreparation(statut: string) {
+  if (["PRETE", "EXPEDIEE"].includes(statut)) return "success" as const;
+  if (statut === "EN_PREPARATION") return "information" as const;
+  if (statut === "VALIDEE") return "validation" as const;
+  return "pending" as const;
+}
+
+function libelleStatutLigne(statut: string) {
+  const libelles: Record<string, string> = {
+    A_PREPARER: "À préparer",
+    EN_PREPARATION: "En préparation",
+    PREPAREE: "Préparée",
+    PARTIELLE: "Partielle",
+    INDISPONIBLE: "Indisponible",
+    REMPLACEMENT_PROPOSE: "Remplacement proposé",
+    REMPLACEMENT_ACCEPTE: "Remplacement accepté",
+    REMPLACEMENT_REFUSE: "Remplacement refusé",
+    EXPEDIEE: "Expédiée",
+  };
+
+  return libelles[statut] ?? statut;
 }
 
 export default function PreparationsPage() {
@@ -235,6 +286,63 @@ export default function PreparationsPage() {
     ["BROUILLON", "VALIDEE", "EN_PREPARATION"].includes(
       selection.statut
     );
+
+
+  const indicateurs = useMemo(() => {
+    if (!selection) {
+      return {
+        progression: 0,
+        lignesPreparees: 0,
+        lignesTotales: 0,
+        quantiteDemandee: 0,
+        quantitePreparee: 0,
+        quantiteManquante: 0,
+        anomalies: 0,
+      };
+    }
+
+    const quantiteDemandee = selection.lignes.reduce(
+      (total, ligne) => total + Number(ligne.quantite_demandee),
+      0
+    );
+    const quantitePreparee = selection.lignes.reduce(
+      (total, ligne) => total + Number(ligne.quantite_preparee),
+      0
+    );
+    const quantiteManquante = selection.lignes.reduce(
+      (total, ligne) => total + Number(ligne.quantite_manquante),
+      0
+    );
+    const lignesPreparees = selection.lignes.filter((ligne) =>
+      ["PREPAREE", "REMPLACEMENT_ACCEPTE", "EXPEDIEE"].includes(
+        ligne.statut
+      )
+    ).length;
+    const anomalies = selection.lignes.filter((ligne) =>
+      [
+        "PARTIELLE",
+        "INDISPONIBLE",
+        "REMPLACEMENT_PROPOSE",
+        "REMPLACEMENT_REFUSE",
+      ].includes(ligne.statut)
+    ).length;
+
+    return {
+      progression:
+        quantiteDemandee > 0
+          ? Math.min(
+              100,
+              Math.round((quantitePreparee / quantiteDemandee) * 100)
+            )
+          : 0,
+      lignesPreparees,
+      lignesTotales: selection.lignes.length,
+      quantiteDemandee,
+      quantitePreparee,
+      quantiteManquante,
+      anomalies,
+    };
+  }, [selection]);
 
   const articleSelectionne = articles.find(
     (article) => article.id === Number(ligneForm.article_id)
@@ -631,243 +739,412 @@ export default function PreparationsPage() {
       <Drawer
         open={selection !== null}
         title={selection?.reference ?? ""}
+        eyebrow="Ordre de préparation"
+        size="workspace"
         onClose={() => setSelection(null)}
       >
         {selection && (
-          <div>
-            <div className={styles.detailHeader}>
+          <div className={styles.workspace}>
+            <section className={styles.identity}>
               <div>
-                <h3>{selection.nom}</h3>
+                <div className={styles.identityTop}>
+                  <h3>{selection.nom}</h3>
+                  <StatusBadge
+                    label={selection.statut.replaceAll("_", " ")}
+                    tone={tonStatutPreparation(selection.statut)}
+                  />
+                </div>
                 <p>
                   {selection.affaire.code_externe ||
                     selection.affaire.reference}{" "}
                   — {selection.affaire.nom}
                 </p>
               </div>
-              <strong>{selection.statut}</strong>
-            </div>
 
-            {editable && (
-              <div className={styles.editHeaderButton}>
+              {editable && (
                 <Button
                   variant="secondary"
                   onClick={() => setEditionEntete(!editionEntete)}
                 >
                   <Pencil size={16} />
-                  Modifier la commande
+                  Modifier la préparation
                 </Button>
+              )}
+            </section>
+
+            <section className={styles.metaGrid}>
+              <div>
+                <span>Client</span>
+                <strong>{selection.affaire.client ?? "—"}</strong>
               </div>
-            )}
+              <div>
+                <span>Site / Zone</span>
+                <strong>
+                  {selection.affaire.site ?? "—"}
+                  {selection.affaire.zone_intervention
+                    ? ` / ${selection.affaire.zone_intervention}`
+                    : ""}
+                </strong>
+              </div>
+              <div>
+                <span>Demandeur</span>
+                <strong>{selection.demandeur ?? "—"}</strong>
+              </div>
+              <div>
+                <span>Préparateur</span>
+                <strong>{selection.preparateur ?? "—"}</strong>
+              </div>
+              <div>
+                <span>Début</span>
+                <strong>
+                  {selection.date_besoin
+                    ? new Intl.DateTimeFormat("fr-FR").format(
+                        new Date(`${selection.date_besoin}T00:00:00`)
+                      )
+                    : "—"}
+                </strong>
+              </div>
+              <div>
+                <span>Véhicule</span>
+                <strong>{selection.vehicule ?? "—"}</strong>
+              </div>
+            </section>
+
+            <KpiGrid>
+              <KpiCard
+                label="Progression"
+                value={`${indicateurs.progression} %`}
+                description={`${indicateurs.lignesPreparees} / ${indicateurs.lignesTotales} lignes`}
+              />
+              <KpiCard
+                label="Demandé"
+                value={indicateurs.quantiteDemandee.toLocaleString("fr-FR")}
+                description="Toutes unités confondues"
+              />
+              <KpiCard
+                label="Préparé"
+                value={indicateurs.quantitePreparee.toLocaleString("fr-FR")}
+                description="Quantité enregistrée"
+              />
+              <KpiCard
+                label="Manquant"
+                value={indicateurs.quantiteManquante.toLocaleString("fr-FR")}
+                description="Reste à traiter"
+              />
+              <KpiCard
+                label="Anomalies"
+                value={indicateurs.anomalies}
+                description="Partiels ou indisponibles"
+              />
+            </KpiGrid>
+
+            <div className={styles.progressBlock}>
+              <div className={styles.progressTrack}>
+                <span style={{ width: `${indicateurs.progression}%` }} />
+              </div>
+              <small>{indicateurs.progression}% de la préparation réalisée</small>
+            </div>
 
             {editionEntete && (
-              <form className={styles.headerForm} onSubmit={modifierEntete}>
-                <input
-                  required
-                  placeholder="Nom"
-                  value={form.nom}
-                  onChange={(event) =>
-                    setForm({ ...form, nom: event.target.value })
-                  }
-                />
-                <input
-                  type="date"
-                  value={form.date_besoin}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      date_besoin: event.target.value,
-                    })
-                  }
-                />
-                <input
-                  placeholder="Demandeur"
-                  value={form.demandeur}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      demandeur: event.target.value,
-                    })
-                  }
-                />
-                <input
-                  placeholder="Préparateur"
-                  value={form.preparateur}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      preparateur: event.target.value,
-                    })
-                  }
-                />
-                <input
-                  placeholder="Véhicule"
-                  value={form.vehicule}
-                  onChange={(event) =>
-                    setForm({ ...form, vehicule: event.target.value })
-                  }
-                />
-                <Button type="submit">Enregistrer</Button>
-              </form>
-            )}
-
-            {editable && (
-              <form className={styles.addLine} onSubmit={enregistrerLigne}>
-                <h4>
-                  {ligneEditee
-                    ? "Modifier le besoin"
-                    : "Ajouter un article"}
-                </h4>
-
-                <select
-                  required
-                  disabled={ligneEditee !== null}
-                  value={ligneForm.article_id}
-                  onChange={(event) =>
-                    setLigneForm({
-                      ...ligneForm,
-                      article_id: event.target.value,
-                      lot_id: "",
-                    })
-                  }
-                >
-                  <option value="">Article</option>
-                  {articles.map((article) => (
-                    <option key={article.id} value={article.id}>
-                      {article.reference} — {article.designation}
-                    </option>
-                  ))}
-                </select>
-
-                {articleEstBeton && (
-                  <select
+              <SectionCard
+                title="Informations de préparation"
+                description="Demandeur, préparateur, véhicule et date de besoin."
+              >
+                <form className={styles.headerForm} onSubmit={modifierEntete}>
+                  <input
                     required
-                    value={ligneForm.lot_id}
+                    placeholder="Nom"
+                    value={form.nom}
                     onChange={(event) =>
-                      setLigneForm({
-                        ...ligneForm,
-                        lot_id: event.target.value,
+                      setForm({ ...form, nom: event.target.value })
+                    }
+                  />
+                  <input
+                    type="date"
+                    value={form.date_besoin}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        date_besoin: event.target.value,
                       })
                     }
-                  >
-                    <option value="">Lot béton</option>
-                    {lotsArticle.map((lot) => (
-                      <option key={lot.id} value={lot.id}>
-                        {lot.numero_lot_fournisseur}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                <select
-                  required
-                  value={ligneForm.emplacement_source_id}
-                  onChange={(event) =>
-                    setLigneForm({
-                      ...ligneForm,
-                      emplacement_source_id: event.target.value,
-                    })
-                  }
-                >
-                  <option value="">Emplacement source</option>
-                  {emplacements.map((emplacement) => (
-                    <option key={emplacement.id} value={emplacement.id}>
-                      {emplacement.nom}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  required
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  placeholder="Quantité demandée"
-                  value={ligneForm.quantite_demandee}
-                  onChange={(event) =>
-                    setLigneForm({
-                      ...ligneForm,
-                      quantite_demandee: event.target.value,
-                    })
-                  }
-                />
-
-                <div className={styles.lineFormActions}>
-                  {ligneEditee && (
+                  />
+                  <input
+                    placeholder="Demandeur"
+                    value={form.demandeur}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        demandeur: event.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    placeholder="Préparateur"
+                    value={form.preparateur}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        preparateur: event.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    placeholder="Véhicule"
+                    value={form.vehicule}
+                    onChange={(event) =>
+                      setForm({ ...form, vehicule: event.target.value })
+                    }
+                  />
+                  <div className={styles.inlineActions}>
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => {
-                        setLigneEditee(null);
-                        setLigneForm(ligneVide);
-                      }}
+                      onClick={() => setEditionEntete(false)}
                     >
                       Annuler
                     </Button>
-                  )}
-                  <Button type="submit" variant="secondary">
-                    {ligneEditee ? "Modifier" : "Ajouter"}
-                  </Button>
-                </div>
-              </form>
+                    <Button type="submit">Enregistrer</Button>
+                  </div>
+                </form>
+              </SectionCard>
             )}
 
-            <div className={styles.lines}>
-              {selection.lignes.map((ligne) => (
-                <div className={styles.line} key={ligne.id}>
-                  <div>
-                    <strong>{ligne.article.designation}</strong>
-                    <span>
-                      {ligne.article.reference}
-                      {ligne.lot
-                        ? ` — Lot ${ligne.lot.numero_lot_fournisseur}`
-                        : ""}
-                    </span>
-                    <small>
-                      {ligne.emplacement_source?.nom ?? "Source à définir"}
-                    </small>
-                  </div>
+            {editable && (
+              <SectionCard
+                title={
+                  ligneEditee
+                    ? "Modifier le besoin"
+                    : "Ajouter un article"
+                }
+                description="Les besoins validés alimentent les réservations."
+              >
+                <form className={styles.addLine} onSubmit={enregistrerLigne}>
+                  <select
+                    required
+                    disabled={ligneEditee !== null}
+                    value={ligneForm.article_id}
+                    onChange={(event) =>
+                      setLigneForm({
+                        ...ligneForm,
+                        article_id: event.target.value,
+                        lot_id: "",
+                      })
+                    }
+                  >
+                    <option value="">Article</option>
+                    {articles.map((article) => (
+                      <option key={article.id} value={article.id}>
+                        {article.reference} — {article.designation}
+                      </option>
+                    ))}
+                  </select>
 
-                  <div className={styles.quantities}>
-                    <label>
-                      <span>Demandé</span>
-                      <strong>
-                        {Number(ligne.quantite_demandee).toLocaleString("fr-FR")}{" "}
-                        {ligne.article.unite}
-                      </strong>
-                    </label>
-
-                    <label>
-                      <span>Préparé</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        disabled={
-                          selection.statut !== "EN_PREPARATION"
-                        }
-                        defaultValue={ligne.quantite_preparee}
-                        onBlur={(event) =>
-                          saisirPreparee(ligne, event.target.value)
-                        }
-                      />
-                    </label>
-                  </div>
-
-                  {editable && (
-                    <div className={styles.lineActions}>
-                      <button onClick={() => editerLigne(ligne)}>
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => supprimerLigne(ligne)}>
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                  {articleEstBeton && (
+                    <select
+                      required
+                      value={ligneForm.lot_id}
+                      onChange={(event) =>
+                        setLigneForm({
+                          ...ligneForm,
+                          lot_id: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Lot béton</option>
+                      {lotsArticle.map((lot) => (
+                        <option key={lot.id} value={lot.id}>
+                          {lot.numero_lot_fournisseur}
+                        </option>
+                      ))}
+                    </select>
                   )}
-                </div>
-              ))}
-            </div>
 
-            <div className="drawer-actions">
+                  <select
+                    required
+                    value={ligneForm.emplacement_source_id}
+                    onChange={(event) =>
+                      setLigneForm({
+                        ...ligneForm,
+                        emplacement_source_id: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Emplacement source</option>
+                    {emplacements.map((emplacement) => (
+                      <option key={emplacement.id} value={emplacement.id}>
+                        {emplacement.nom}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    required
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    placeholder="Quantité demandée"
+                    value={ligneForm.quantite_demandee}
+                    onChange={(event) =>
+                      setLigneForm({
+                        ...ligneForm,
+                        quantite_demandee: event.target.value,
+                      })
+                    }
+                  />
+
+                  <div className={styles.lineFormActions}>
+                    {ligneEditee && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setLigneEditee(null);
+                          setLigneForm(ligneVide);
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    )}
+                    <Button type="submit" variant="secondary">
+                      {ligneEditee ? "Modifier" : "Ajouter"}
+                    </Button>
+                  </div>
+                </form>
+              </SectionCard>
+            )}
+
+            <SectionCard
+              title="Ordre de préparation"
+              description="Saisie directe des quantités et suivi des écarts."
+              flush
+            >
+              <div className={styles.tableWrap}>
+                <table className={styles.linesTable}>
+                  <thead>
+                    <tr>
+                      <th>Statut</th>
+                      <th>Article</th>
+                      <th>Lot</th>
+                      <th>Emplacement</th>
+                      <th>Demandé</th>
+                      <th>Préparé</th>
+                      <th>Manquant</th>
+                      <th>Commentaire</th>
+                      {editable && <th aria-label="Actions" />}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selection.lignes.map((ligne) => (
+                      <tr key={ligne.id}>
+                        <td>
+                          <StatusBadge
+                            label={libelleStatutLigne(ligne.statut)}
+                            tone={tonStatutLigne(ligne.statut)}
+                          />
+                        </td>
+                        <td>
+                          <strong>{ligne.article.designation}</strong>
+                          <small>{ligne.article.reference}</small>
+                        </td>
+                        <td>
+                          {ligne.lot?.numero_lot_fournisseur ?? "—"}
+                        </td>
+                        <td>
+                          {ligne.emplacement_source?.nom ?? "À définir"}
+                        </td>
+                        <td className={styles.numberCell}>
+                          {Number(
+                            ligne.quantite_demandee
+                          ).toLocaleString("fr-FR")}{" "}
+                          {ligne.article.unite}
+                        </td>
+                        <td className={styles.inputCell}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            disabled={
+                              selection.statut !== "EN_PREPARATION"
+                            }
+                            defaultValue={ligne.quantite_preparee}
+                            onBlur={(event) =>
+                              saisirPreparee(ligne, event.target.value)
+                            }
+                          />
+                          <span>{ligne.article.unite}</span>
+                        </td>
+                        <td className={styles.numberCell}>
+                          {Number(
+                            ligne.quantite_manquante
+                          ).toLocaleString("fr-FR")}{" "}
+                          {ligne.article.unite}
+                        </td>
+                        <td className={styles.commentCell}>
+                          {ligne.motif_ecart ||
+                            ligne.commentaire_preparateur ||
+                            ligne.commentaire ||
+                            "—"}
+                        </td>
+                        {editable && (
+                          <td>
+                            <div className={styles.rowActions}>
+                              <button
+                                type="button"
+                                onClick={() => editerLigne(ligne)}
+                                title="Modifier"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => supprimerLigne(ligne)}
+                                title="Supprimer"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {selection.lignes.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={editable ? 9 : 8}
+                          className={styles.emptyTable}
+                        >
+                          Aucun article ajouté.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+
+            {selection.commentaire && (
+              <SectionCard title="Remarques générales">
+                <p className={styles.generalComment}>
+                  {selection.commentaire}
+                </p>
+              </SectionCard>
+            )}
+
+            <ActionBar
+              sticky
+              secondary={
+                selection.statut !== "EXPEDIEE" ? (
+                  <Button
+                    variant="ghost"
+                    onClick={supprimerPreparation}
+                  >
+                    <XCircle size={17} />
+                    Supprimer
+                  </Button>
+                ) : null
+              }
+            >
               {selection.statut === "BROUILLON" && (
                 <Button onClick={() => action("valider")}>
                   <CheckCircle2 size={17} />
@@ -891,18 +1168,9 @@ export default function PreparationsPage() {
                   Expédier
                 </Button>
               )}
-
-              {selection.statut !== "EXPEDIEE" && (
-                <Button
-                  variant="ghost"
-                  onClick={supprimerPreparation}
-                >
-                  <XCircle size={17} />
-                  Supprimer la préparation
-                </Button>
-              )}
-            </div>
+            </ActionBar>
           </div>
+        )}
         )}
       </Drawer>
 
