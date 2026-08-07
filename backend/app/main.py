@@ -7,10 +7,12 @@ from app.api import (
     auth_router,
     emplacements_router,
     demandes_sortie_router,
+    dashboard_router,
     familles_router,
     health_router,
     inventaires_router,
     lots_beton_router,
+    magasin_router,
     materiels_router,
     mouvements_router,
     preparations_router,
@@ -40,10 +42,12 @@ app.include_router(utilisateurs_router)
 app.include_router(familles_router)
 app.include_router(emplacements_router)
 app.include_router(demandes_sortie_router)
+app.include_router(dashboard_router)
 app.include_router(stocks_router)
 app.include_router(router_reservations)
 app.include_router(router_notifications)
 app.include_router(lots_beton_router)
+app.include_router(magasin_router)
 app.include_router(affaires_router)
 app.include_router(materiels_router)
 app.include_router(inventaires_router)

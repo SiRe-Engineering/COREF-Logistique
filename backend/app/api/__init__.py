@@ -3,10 +3,12 @@ from app.api.articles import router as articles_router
 from app.api.auth import router as auth_router
 from app.api.emplacements import router as emplacements_router
 from app.api.demandes_sortie import router as demandes_sortie_router
+from app.api.dashboard import router as dashboard_router
 from app.api.familles import router as familles_router
 from app.api.health import router as health_router
 from app.api.inventaires import router as inventaires_router
 from app.api.lots_beton import router as lots_beton_router
+from app.api.magasin import router as magasin_router
 from app.api.materiels import router as materiels_router
 from app.api.mouvements import router as mouvements_router
 from app.api.preparations import router as preparations_router
@@ -23,10 +25,12 @@ __all__ = [
     "auth_router",
     "emplacements_router",
     "demandes_sortie_router",
+    "dashboard_router",
     "familles_router",
     "health_router",
     "inventaires_router",
     "lots_beton_router",
+    "magasin_router",
     "materiels_router",
     "mouvements_router",
     "preparations_router",
