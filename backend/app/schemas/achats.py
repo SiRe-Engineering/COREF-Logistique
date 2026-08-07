@@ -96,3 +96,24 @@ class ReceptionLigneCreate(BaseModel):
     lot_id:int|None=None
     prix_unitaire_ht:Decimal|None=Field(default=None,ge=0)
     commentaire:str|None=None
+
+
+
+class ArticleFournisseurUpdate(BaseModel):
+    reference_fournisseur: str | None = None
+    prix_unitaire_ht: Decimal | None = Field(default=None, ge=0)
+    delai_jours: int | None = Field(default=None, ge=0)
+    minimum_commande: Decimal | None = Field(default=None, ge=0)
+    fournisseur_prefere: bool | None = None
+    commentaire_prix: str | None = None
+
+
+class HistoriquePrixFournisseurRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    article_fournisseur_id: int
+    prix_unitaire_ht: Decimal
+    date_effet: datetime
+    modifie_par: str | None
+    commentaire: str | None

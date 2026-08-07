@@ -28,6 +28,12 @@ type Suggestion = {
   article:Article; quantite_physique:string; quantite_reservee:string;
   quantite_disponible:string; quantite_suggeree:string; niveau:string;
   besoin_ouvert_id:number|null;
+  fournisseur_prefere_id:number|null;
+  fournisseur_prefere:string|null;
+  fournisseur_prefere_code:string|null;
+  reference_fournisseur:string|null;
+  prix_suggere:string|null;
+  delai_jours:number|null;
 };
 type Besoin = {
   id:number; reference:string; article_id:number; quantite_suggeree:string;
@@ -88,7 +94,10 @@ export default function ReapprovisionnementPage(){
   async function creer(s:Suggestion){
     const r=await fetch(`${API_URL}/api/reapprovisionnement/besoins`,{
       method:"POST",headers:entetesAuthentifiees({"Content-Type":"application/json"}),
-      body:JSON.stringify({article_id:s.article.id,quantite_demandee:n(s.quantite_suggeree),prix_unitaire_prevu:s.article.dernier_prix_achat? n(s.article.dernier_prix_achat):null})
+      body:JSON.stringify({
+        article_id:s.article.id,
+        quantite_demandee:n(s.quantite_suggeree)
+      })
     });
     const d=await r.json().catch(()=>null);
     if(!r.ok){setToast({type:"error",message:d?.detail??"Création impossible."});return}
@@ -156,9 +165,13 @@ export default function ReapprovisionnementPage(){
 
     <section className={styles.panel}>
       <div className={styles.panelHead}><div><span className="eyebrow">Calcul automatique</span><h2>Suggestions de réapprovisionnement</h2></div></div>
-      <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Article</th><th>Disponible</th><th>Mini</th><th>Maxi</th><th>Suggestion</th><th>Niveau</th><th/></tr></thead>
-      <tbody>{suggestions.map(s=><tr key={s.article.id}><td><strong>{s.article.reference}</strong><br/><span>{s.article.designation}</span></td><td>{q(s.quantite_disponible,s.article.unite)}</td><td>{q(s.article.stock_minimum,s.article.unite)}</td><td>{n(s.article.stock_maximum)>0?q(s.article.stock_maximum,s.article.unite):<span className={styles.maxMissing}>Maxi à définir</span>}</td><td><strong>{q(s.quantite_suggeree,s.article.unite)}</strong></td><td><span className={`${styles.badge} ${s.niveau==="RUPTURE"?styles.danger:styles.warning}`}>{s.niveau==="RUPTURE"?"Rupture":"Sous seuil"}</span></td><td>{s.besoin_ouvert_id?<span className={styles.existing}>Besoin ouvert</span>:<Button onClick={()=>creer(s)}>Créer le besoin</Button>}</td></tr>)}
-      {!chargement&&suggestions.length===0&&<tr><td colSpan={7} className={styles.empty}>Aucun réapprovisionnement suggéré.</td></tr>}</tbody></table></div>
+      <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Article</th><th>Disponible</th><th>Mini</th><th>Maxi</th><th>Suggestion</th><th>Fournisseur conseillé</th><th>Prix conseillé</th><th>Délai</th><th>Niveau</th><th/></tr></thead>
+      <tbody>{suggestions.map(s=><tr key={s.article.id}><td><strong>{s.article.reference}</strong><br/><span>{s.article.designation}</span></td><td>{q(s.quantite_disponible,s.article.unite)}</td><td>{q(s.article.stock_minimum,s.article.unite)}</td><td>{n(s.article.stock_maximum)>0?q(s.article.stock_maximum,s.article.unite):<span className={styles.maxMissing}>Maxi à définir</span>}</td><td><strong>{q(s.quantite_suggeree,s.article.unite)}</strong></td>
+      <td>{s.fournisseur_prefere?<><strong>{s.fournisseur_prefere_code}</strong><br/><span>{s.fournisseur_prefere}</span></>:"—"}</td>
+      <td>{s.prix_suggere?euros(n(s.prix_suggere)):"—"}</td>
+      <td>{s.delai_jours!=null?`${s.delai_jours} j`:"—"}</td>
+      <td><span className={`${styles.badge} ${s.niveau==="RUPTURE"?styles.danger:styles.warning}`}>{s.niveau==="RUPTURE"?"Rupture":"Sous seuil"}</span></td><td>{s.besoin_ouvert_id?<span className={styles.existing}>Besoin ouvert</span>:<Button onClick={()=>creer(s)}>Créer le besoin</Button>}</td></tr>)}
+      {!chargement&&suggestions.length===0&&<tr><td colSpan={10} className={styles.empty}>Aucun réapprovisionnement suggéré.</td></tr>}</tbody></table></div>
     </section>
 
     <section className={styles.panel}>

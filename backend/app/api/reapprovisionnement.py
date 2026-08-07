@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db.session import get_db
 from app.dependencies import utilisateur_courant
 from app.models.article import Article
+from app.models.achats import ArticleFournisseur
 from app.models.reapprovisionnement import BesoinReapprovisionnement
 from app.models.utilisateur import Utilisateur
 from app.schemas.mouvement import MouvementCreate
@@ -121,16 +122,32 @@ def creer_besoin(
             detail="La quantité à réapprovisionner doit être positive.",
         )
 
+    prefere = db.scalar(
+        select(ArticleFournisseur).where(
+            ArticleFournisseur.article_id == article.id,
+            ArticleFournisseur.fournisseur_prefere.is_(True),
+        )
+    )
+
+    prix_prevu = (
+        prefere.prix_unitaire_ht
+        if prefere is not None and prefere.prix_unitaire_ht is not None
+        else payload.prix_unitaire_prevu
+        if payload.prix_unitaire_prevu is not None
+        else article.dernier_prix_achat
+    )
+    fournisseur_prevu = (
+        prefere.fournisseur.raison_sociale
+        if prefere is not None
+        else payload.fournisseur
+    )
+
     besoin = BesoinReapprovisionnement(
         article_id=article.id,
         quantite_suggeree=suggeree,
         quantite_demandee=demandee,
-        prix_unitaire_prevu=(
-            payload.prix_unitaire_prevu
-            if payload.prix_unitaire_prevu is not None
-            else article.dernier_prix_achat
-        ),
-        fournisseur=payload.fournisseur,
+        prix_unitaire_prevu=prix_prevu,
+        fournisseur=fournisseur_prevu,
         commentaire=payload.commentaire,
         cree_par=utilisateur.nom_complet,
     )

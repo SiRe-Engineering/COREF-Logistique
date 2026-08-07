@@ -1,4 +1,10 @@
-from app.models.achats import Fournisseur, ArticleFournisseur, CommandeAchat, LigneCommandeAchat
+from app.models.achats import (
+    ArticleFournisseur,
+    CommandeAchat,
+    Fournisseur,
+    HistoriquePrixFournisseur,
+    LigneCommandeAchat,
+)
 from app.models.affaire import Affaire
 from app.models.alerte import AlerteLogistique
 from app.models.article import Article
@@ -22,6 +28,7 @@ __all__ = [
     "ArticleFournisseur",
     "CommandeAchat",
     "LigneCommandeAchat",
+    "HistoriquePrixFournisseur",
     "AlerteLogistique",
     "Article",
     "Emplacement",

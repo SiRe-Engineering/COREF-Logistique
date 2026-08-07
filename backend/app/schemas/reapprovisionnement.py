@@ -35,6 +35,12 @@ class SuggestionReapproRead(BaseModel):
     quantite_suggeree: Decimal
     niveau: str
     besoin_ouvert_id: int | None = None
+    fournisseur_prefere_id: int | None = None
+    fournisseur_prefere: str | None = None
+    fournisseur_prefere_code: str | None = None
+    reference_fournisseur: str | None = None
+    prix_suggere: Decimal | None = None
+    delai_jours: int | None = None
 
 
 class BesoinCreate(BaseModel):

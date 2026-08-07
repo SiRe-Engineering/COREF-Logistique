@@ -25,6 +25,7 @@ from app.api import (
     stocks_router,
     utilisateurs_router,
     valorisation_router,
+    pilotage_achats_router,
 )
 from app.core.config import settings
 
@@ -64,6 +65,7 @@ app.include_router(reapprovisionnement_router)
 app.include_router(mouvements_router)
 app.include_router(articles_router)
 app.include_router(valorisation_router)
+app.include_router(pilotage_achats_router)
 
 
 @app.get("/")

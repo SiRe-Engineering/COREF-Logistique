@@ -69,3 +69,29 @@ class LigneCommandeAchat(Base):
     prix_unitaire_ht: Mapped[Decimal] = mapped_column(Numeric(14,4))
     article = relationship("Article", lazy="joined")
     besoin = relationship("BesoinReapprovisionnement", lazy="joined")
+
+
+
+class HistoriquePrixFournisseur(Base):
+    __tablename__ = "historique_prix_fournisseurs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_fournisseur_id: Mapped[int] = mapped_column(
+        ForeignKey("articles_fournisseurs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    prix_unitaire_ht: Mapped[Decimal] = mapped_column(Numeric(14, 4))
+    date_effet: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    modifie_par: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+    commentaire: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    article_fournisseur = relationship(
+        "ArticleFournisseur",
+        lazy="joined",
+    )

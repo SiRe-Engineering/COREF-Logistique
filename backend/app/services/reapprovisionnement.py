@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.article import Article
+from app.models.achats import ArticleFournisseur
 from app.models.reapprovisionnement import BesoinReapprovisionnement
 from app.models.stock import Stock
 from app.schemas.reapprovisionnement import SuggestionReapproRead
@@ -81,6 +82,16 @@ def suggestions_reapprovisionnement(
         ).all()
     }
 
+
+    fournisseurs_preferes = {
+        lien.article_id: lien
+        for lien in db.scalars(
+            select(ArticleFournisseur).where(
+                ArticleFournisseur.fournisseur_prefere.is_(True)
+            )
+        ).unique().all()
+    }
+
     resultats: list[SuggestionReapproRead] = []
     for article, physique_raw, reservee_raw in lignes:
         physique = Decimal(physique_raw or 0)
@@ -106,6 +117,8 @@ def suggestions_reapprovisionnement(
         if suggeree <= 0:
             continue
 
+        prefere = fournisseurs_preferes.get(article.id)
+
         resultats.append(
             SuggestionReapproRead(
                 article=article,
@@ -115,6 +128,24 @@ def suggestions_reapprovisionnement(
                 quantite_suggeree=suggeree,
                 niveau=niveau,
                 besoin_ouvert_id=besoins_ouverts.get(article.id),
+                fournisseur_prefere_id=(
+                    prefere.fournisseur_id if prefere else None
+                ),
+                fournisseur_prefere=(
+                    prefere.fournisseur.raison_sociale
+                    if prefere
+                    else None
+                ),
+                fournisseur_prefere_code=(
+                    prefere.fournisseur.code if prefere else None
+                ),
+                reference_fournisseur=(
+                    prefere.reference_fournisseur if prefere else None
+                ),
+                prix_suggere=(
+                    prefere.prix_unitaire_ht if prefere else None
+                ),
+                delai_jours=(prefere.delai_jours if prefere else None),
             )
         )
 
