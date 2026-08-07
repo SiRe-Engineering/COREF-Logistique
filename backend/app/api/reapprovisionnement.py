@@ -112,6 +112,7 @@ def creer_besoin(
         disponible=disponible,
         minimum=Decimal(article.stock_minimum or 0),
         maximum=Decimal(article.stock_maximum or 0),
+        seuil_alerte=Decimal(article.seuil_alerte or 0),
     )
     demandee = payload.quantite_demandee or suggeree
     if demandee <= 0:

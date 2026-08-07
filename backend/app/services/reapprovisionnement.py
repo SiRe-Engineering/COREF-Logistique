@@ -17,9 +17,24 @@ def quantite_suggeree(
     disponible: Decimal,
     minimum: Decimal,
     maximum: Decimal,
+    seuil_alerte: Decimal = Decimal("0"),
 ) -> Decimal:
-    cible = maximum if maximum > 0 else minimum
-    return max(Decimal("0"), cible - disponible)
+    """Calcule la quantité proposée.
+
+    Avec un stock maximum, il constitue la cible de remontée.
+    Sans stock maximum, un article au seuil reste visible : on propose
+    une quantité de sécurité égale à la cible (mini / seuil), tout en
+    signalant dans l'interface que le stock maximum doit être défini.
+    """
+    seuil = max(minimum, seuil_alerte)
+    if maximum > 0:
+        return max(Decimal("0"), maximum - disponible)
+
+    cible = seuil
+    manque = max(Decimal("0"), cible - disponible)
+    if disponible <= seuil and cible > 0 and manque == 0:
+        return cible
+    return manque
 
 
 def suggestions_reapprovisionnement(
@@ -86,6 +101,7 @@ def suggestions_reapprovisionnement(
             disponible=disponible,
             minimum=minimum,
             maximum=maximum,
+            seuil_alerte=Decimal(article.seuil_alerte or 0),
         )
         if suggeree <= 0:
             continue
