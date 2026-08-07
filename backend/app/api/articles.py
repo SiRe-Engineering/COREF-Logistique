@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
 from app.models.article import Article
+from app.services.valorisation import actualiser_snapshot_mensuel
 from app.models.famille import Famille, SousFamille
 from app.schemas.article import ArticleCreate, ArticleRead, ArticleUpdate
 
@@ -137,6 +139,11 @@ def modifier_article(
 
     for champ, valeur in donnees.items():
         setattr(article, champ, valeur)
+
+    if "cout_unitaire_moyen" in donnees:
+        article.date_maj_cout = datetime.now(timezone.utc)
+        db.flush()
+        actualiser_snapshot_mensuel(db)
 
     try:
         db.commit()

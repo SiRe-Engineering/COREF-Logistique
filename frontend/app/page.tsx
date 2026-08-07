@@ -38,6 +38,10 @@ type DashboardData = {
     preparations_en_retard: number;
     inventaires_en_cours: number;
     retours_en_attente: number;
+    valeur_stock_physique: string;
+    valeur_stock_reservee: string;
+    valeur_stock_disponible: string;
+    valeur_lots_a_perimer: string;
   };
   stocks: Array<{
     article_id: number;
@@ -140,6 +144,47 @@ export default function Dashboard() {
           Priorités, alertes et activité opérationnelle de COREF Logistique.
         </p>
       </div>
+
+      {kpis && (
+        <section className={styles.valuation}>
+          <div>
+            <span>Valeur stock physique</span>
+            <strong>
+              {Number(kpis.valeur_stock_physique).toLocaleString(
+                "fr-FR",
+                { style: "currency", currency: "EUR" }
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>Valeur réservée</span>
+            <strong>
+              {Number(kpis.valeur_stock_reservee).toLocaleString(
+                "fr-FR",
+                { style: "currency", currency: "EUR" }
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>Valeur disponible</span>
+            <strong>
+              {Number(kpis.valeur_stock_disponible).toLocaleString(
+                "fr-FR",
+                { style: "currency", currency: "EUR" }
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>Lots ≤ 60 jours</span>
+            <strong>
+              {Number(kpis.valeur_lots_a_perimer).toLocaleString(
+                "fr-FR",
+                { style: "currency", currency: "EUR" }
+              )}
+            </strong>
+          </div>
+        </section>
+      )}
 
       {kpis && (
         <section className={styles.kpis}>

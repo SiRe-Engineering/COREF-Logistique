@@ -11,6 +11,7 @@ from app.models.preparation import LignePreparation, Preparation
 from app.models.reservation import Notification, ReservationStock
 from app.models.stock import Stock
 from app.models.utilisateur import SessionUtilisateur, Utilisateur
+from app.models.valorisation import SnapshotValorisationStock
 
 __all__ = [
     "Affaire",
@@ -32,4 +33,5 @@ __all__ = [
     "Stock",
     "StockLot",
     "Utilisateur",
+    "SnapshotValorisationStock",
 ]

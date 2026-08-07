@@ -18,6 +18,7 @@ from app.api.reservations import (
 )
 from app.api.stocks import router as stocks_router
 from app.api.utilisateurs import router as utilisateurs_router
+from app.api.valorisation import router as valorisation_router
 
 __all__ = [
     "affaires_router",
@@ -38,4 +39,5 @@ __all__ = [
     "router_reservations",
     "stocks_router",
     "utilisateurs_router",
+    "valorisation_router",
 ]

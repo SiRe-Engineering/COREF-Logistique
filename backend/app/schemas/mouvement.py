@@ -62,6 +62,7 @@ class MouvementCreate(BaseModel):
     emplacement_source_id: int | None = None
     emplacement_destination_id: int | None = None
     quantite: Decimal = Field(gt=0)
+    prix_unitaire_ht: Decimal | None = Field(default=None, ge=0)
     motif: str | None = Field(default=None, max_length=150)
     commentaire: str | None = None
     operateur: str | None = Field(default=None, max_length=120)
@@ -98,6 +99,11 @@ class MouvementCreate(BaseModel):
                     "La source et la destination doivent être différentes."
                 )
 
+        if self.prix_unitaire_ht is not None and self.type != "ENTREE":
+            raise ValueError(
+                "Le prix unitaire HT ne peut être renseigné que sur une entrée."
+            )
+
         if self.type == "SORTIE":
             if self.affaire_id is None and not self.sortie_libre:
                 raise ValueError(
@@ -122,6 +128,9 @@ class MouvementRead(BaseModel):
     emplacement_source_id: int | None
     emplacement_destination_id: int | None
     quantite: Decimal
+    prix_unitaire_ht: Decimal | None
+    cout_unitaire_applique: Decimal
+    valeur_mouvement: Decimal
     motif: str | None
     commentaire: str | None
     operateur: str | None

@@ -20,6 +20,7 @@ from app.api import (
     router_reservations,
     stocks_router,
     utilisateurs_router,
+    valorisation_router,
 )
 from app.core.config import settings
 
@@ -54,6 +55,7 @@ app.include_router(inventaires_router)
 app.include_router(preparations_router)
 app.include_router(mouvements_router)
 app.include_router(articles_router)
+app.include_router(valorisation_router)
 
 
 @app.get("/")

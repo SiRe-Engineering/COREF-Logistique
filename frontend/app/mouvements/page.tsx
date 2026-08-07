@@ -65,6 +65,9 @@ type Mouvement = {
   emplacement_source_id: number | null;
   emplacement_destination_id: number | null;
   quantite: string;
+  prix_unitaire_ht: string | null;
+  cout_unitaire_applique: string;
+  valeur_mouvement: string;
   motif: string | null;
   commentaire: string | null;
   operateur: string | null;
@@ -96,6 +99,7 @@ const initialForm = {
   emplacement_source_id: "",
   emplacement_destination_id: "",
   quantite: "",
+  prix_unitaire_ht: "",
   motif: "",
   commentaire: "",
   operateur: "Utilisateur local",
@@ -269,7 +273,11 @@ export default function MouvementsPage() {
             form.emplacement_destination_id
               ? Number(form.emplacement_destination_id)
               : null,
-          quantite: Number(form.quantite),
+          quantite: Number(form.quantite.replace(",", ".")),
+          prix_unitaire_ht:
+            form.type === "ENTREE" && form.prix_unitaire_ht
+              ? Number(form.prix_unitaire_ht.replace(",", "."))
+              : null,
           motif: form.motif || null,
           commentaire: form.commentaire || null,
           operateur: form.operateur || null,
@@ -455,6 +463,7 @@ export default function MouvementsPage() {
                 <th>Article / lot</th>
                 <th>Flux</th>
                 <th>Quantité</th>
+                <th>Valeur</th>
                 <th>Affaire</th>
                 <th>Motif</th>
                 {adminTechnique && <th aria-label="Actions" />}
@@ -599,6 +608,23 @@ export default function MouvementsPage() {
                     ))}
                   </select>
                 </label>
+
+                {form.type === "ENTREE" && (
+                  <label className="field">
+                    <span>Prix unitaire HT (€)</span>
+                    <input
+                      inputMode="decimal"
+                      value={form.prix_unitaire_ht}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          prix_unitaire_ht: event.target.value,
+                        })
+                      }
+                      placeholder="Ex. 2,84"
+                    />
+                  </label>
+                )}
 
                 <label className="field">
                   <span>Quantité *</span>

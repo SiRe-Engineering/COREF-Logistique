@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.affaire import Affaire
@@ -13,10 +13,15 @@ from app.models.lot_beton import LotBeton, StockLot
 from app.models.mouvement import MouvementStock
 from app.models.stock import Stock
 from app.schemas.mouvement import MouvementCreate
+from app.services.valorisation import actualiser_snapshot_mensuel
 
 
 def _charger_article(db: Session, article_id: int) -> Article:
-    article = db.get(Article, article_id)
+    article = db.scalar(
+        select(Article)
+        .where(Article.id == article_id)
+        .with_for_update(of=Article)
+    )
     if article is None or not article.actif:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -187,6 +192,33 @@ def _retirer(stock, quantite: Decimal, libelle: str) -> None:
     stock.quantite_physique -= quantite
 
 
+
+def _quantite_physique_totale_article(
+    db: Session,
+    article_id: int,
+) -> Decimal:
+    total = db.scalar(
+        select(func.coalesce(func.sum(Stock.quantite_physique), 0))
+        .where(Stock.article_id == article_id)
+    )
+    return Decimal(total or 0)
+
+
+def _calculer_cump_entree(
+    *,
+    quantite_existante: Decimal,
+    cump_existant: Decimal,
+    quantite_entree: Decimal,
+    prix_entree: Decimal,
+) -> Decimal:
+    nouvelle_quantite = quantite_existante + quantite_entree
+    if nouvelle_quantite <= 0:
+        return Decimal("0")
+    valeur_existante = quantite_existante * cump_existant
+    valeur_entree = quantite_entree * prix_entree
+    return (valeur_existante + valeur_entree) / nouvelle_quantite
+
+
 def executer_mouvement(
     db: Session,
     payload: MouvementCreate,
@@ -222,6 +254,27 @@ def executer_mouvement(
 
     type_mouvement = payload.type
     quantite = payload.quantite
+    cump_avant = article.cout_unitaire_moyen or Decimal("0")
+    cout_applique = cump_avant
+
+    # Une entrée avec prix d'achat recalcule le CUMP avant d'enregistrer
+    # la valeur du mouvement. Les sorties, retours, transferts et
+    # ajustements utilisent le CUMP en vigueur sans le modifier.
+    if type_mouvement == "ENTREE" and payload.prix_unitaire_ht is not None:
+        quantite_existante = _quantite_physique_totale_article(
+            db,
+            article.id,
+        )
+        nouveau_cump = _calculer_cump_entree(
+            quantite_existante=quantite_existante,
+            cump_existant=cump_avant,
+            quantite_entree=quantite,
+            prix_entree=payload.prix_unitaire_ht,
+        )
+        article.cout_unitaire_moyen = nouveau_cump
+        article.dernier_prix_achat = payload.prix_unitaire_ht
+        article.date_maj_cout = datetime.now(timezone.utc)
+        cout_applique = payload.prix_unitaire_ht
 
     try:
         if type_mouvement in {
@@ -313,9 +366,16 @@ def executer_mouvement(
                 _retirer(source_lot, quantite, "du lot")
                 destination_lot.quantite_physique += quantite
 
+        donnees["cout_unitaire_applique"] = cout_applique
+        donnees["valeur_mouvement"] = (
+            quantite * cout_applique
+        ).quantize(Decimal("0.01"))
+
         mouvement = MouvementStock(**donnees)
         db.add(mouvement)
         db.flush()
+
+        actualiser_snapshot_mensuel(db)
 
         if valider_transaction:
             db.commit()
@@ -447,6 +507,7 @@ def annuler_mouvement(
         mouvement.annule_par = annule_par
         mouvement.motif_annulation = motif.strip()
 
+        actualiser_snapshot_mensuel(db)
         db.commit()
         db.refresh(mouvement)
         return mouvement

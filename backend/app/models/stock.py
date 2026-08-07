@@ -58,3 +58,28 @@ class Stock(Base):
     @property
     def quantite_disponible(self) -> Decimal:
         return self.quantite_physique - self.quantite_reservee
+
+
+# Propriétés de valorisation : le CUMP est porté par l'article.
+def _valeur_stock(quantite: Decimal, cout: Decimal | None) -> Decimal:
+    return quantite * (cout or Decimal("0"))
+
+
+Stock.valeur_physique = property(
+    lambda self: _valeur_stock(
+        self.quantite_physique,
+        self.article.cout_unitaire_moyen,
+    )
+)
+Stock.valeur_reservee = property(
+    lambda self: _valeur_stock(
+        self.quantite_reservee,
+        self.article.cout_unitaire_moyen,
+    )
+)
+Stock.valeur_disponible = property(
+    lambda self: _valeur_stock(
+        self.quantite_disponible,
+        self.article.cout_unitaire_moyen,
+    )
+)

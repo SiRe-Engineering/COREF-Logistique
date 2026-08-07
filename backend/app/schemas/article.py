@@ -20,6 +20,7 @@ class ArticleBase(BaseModel):
     stock_minimum: Decimal = Field(default=0, ge=0)
     stock_maximum: Decimal = Field(default=0, ge=0)
     seuil_alerte: Decimal = Field(default=0, ge=0)
+    cout_unitaire_moyen: Decimal = Field(default=0, ge=0)
 
     @field_validator("designation", "unite")
     @classmethod
@@ -45,6 +46,7 @@ class ArticleUpdate(BaseModel):
     stock_minimum: Decimal | None = Field(default=None, ge=0)
     stock_maximum: Decimal | None = Field(default=None, ge=0)
     seuil_alerte: Decimal | None = Field(default=None, ge=0)
+    cout_unitaire_moyen: Decimal | None = Field(default=None, ge=0)
     actif: bool | None = None
 
     @field_validator("reference")
@@ -61,5 +63,7 @@ class ArticleRead(ArticleBase):
     actif: bool
     date_creation: datetime
     date_modification: datetime
+    dernier_prix_achat: Decimal | None
+    date_maj_cout: datetime | None
     famille_relation: ReferentielCourt | None = None
     sous_famille_relation: ReferentielCourt | None = None

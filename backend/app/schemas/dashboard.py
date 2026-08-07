@@ -13,6 +13,10 @@ class DashboardKpiRead(BaseModel):
     preparations_en_retard: int
     inventaires_en_cours: int
     retours_en_attente: int
+    valeur_stock_physique: Decimal
+    valeur_stock_reservee: Decimal
+    valeur_stock_disponible: Decimal
+    valeur_lots_a_perimer: Decimal
 
 
 class DashboardStockAlerteRead(BaseModel):

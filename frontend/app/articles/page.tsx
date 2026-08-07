@@ -36,6 +36,9 @@ type Article = {
   sous_famille_id: number | null;
   unite: string;
   stock_minimum: string;
+  cout_unitaire_moyen: string;
+  dernier_prix_achat: string | null;
+  date_maj_cout: string | null;
   actif: boolean;
   famille_relation: { id: number; code: string; nom: string } | null;
   sous_famille_relation: { id: number; code: string; nom: string } | null;
@@ -52,6 +55,7 @@ const initialForm = {
   sous_famille_id: "",
   unite: "unité",
   stock_minimum: "0",
+  cout_unitaire_moyen: "0",
 };
 
 function familleTone(nom: string | undefined) {
@@ -192,6 +196,9 @@ export default function ArticlesPage() {
             : null,
           unite: form.unite,
           stock_minimum: Number(form.stock_minimum),
+          cout_unitaire_moyen: Number(
+            form.cout_unitaire_moyen.replace(",", ".")
+          ),
         }),
       });
 
@@ -251,6 +258,53 @@ export default function ArticlesPage() {
             : "Une erreur inattendue est survenue.",
       });
     }
+  }
+
+
+  async function definirCump(article: Article) {
+    const saisie = window.prompt(
+      `CUMP initial / corrigé pour ${article.reference} (€ / ${article.unite}) :`,
+      article.cout_unitaire_moyen ?? "0"
+    );
+    if (saisie === null) return;
+
+    const cout = Number(saisie.replace(",", "."));
+    if (!Number.isFinite(cout) || cout < 0) {
+      setToast({
+        type: "error",
+        message: "Le coût unitaire est invalide.",
+      });
+      return;
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/articles/${article.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cout_unitaire_moyen: cout }),
+      }
+    );
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      setToast({
+        type: "error",
+        message:
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Mise à jour du CUMP impossible.",
+      });
+      return;
+    }
+
+    setArticleSelectionne(data);
+    setArticles((actuels) =>
+      actuels.map((item) => item.id === data.id ? data : item)
+    );
+    setToast({
+      type: "success",
+      message: `CUMP de ${data.reference} mis à jour.`,
+    });
   }
 
   return (
@@ -395,7 +449,41 @@ export default function ArticlesPage() {
               <div><dt>Sous-famille</dt><dd>{articleSelectionne.sous_famille_relation?.nom ?? "—"}</dd></div>
               <div><dt>Unité</dt><dd>{articleSelectionne.unite}</dd></div>
               <div><dt>Stock minimum</dt><dd>{articleSelectionne.stock_minimum}</dd></div>
+              <div>
+                <dt>CUMP</dt>
+                <dd>
+                  {Number(articleSelectionne.cout_unitaire_moyen)
+                    .toLocaleString("fr-FR", {
+                      style: "currency",
+                      currency: "EUR",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4,
+                    })} / {articleSelectionne.unite}
+                </dd>
+              </div>
+              <div>
+                <dt>Dernier prix d’achat</dt>
+                <dd>
+                  {articleSelectionne.dernier_prix_achat === null
+                    ? "—"
+                    : Number(articleSelectionne.dernier_prix_achat)
+                        .toLocaleString("fr-FR", {
+                          style: "currency",
+                          currency: "EUR",
+                        })}
+                </dd>
+              </div>
             </dl>
+
+            <section className="drawer-section">
+              <h4>Valorisation</h4>
+              <Button
+                variant="secondary"
+                onClick={() => definirCump(articleSelectionne)}
+              >
+                Définir / corriger le CUMP
+              </Button>
+            </section>
 
             <section className="drawer-section">
               <h4>Stock</h4>
@@ -507,6 +595,20 @@ export default function ArticlesPage() {
                       (unite) => <option key={unite} value={unite}>{unite}</option>
                     )}
                   </select>
+                </label>
+
+                <label className="field">
+                  <span>CUMP initial (€ / unité)</span>
+                  <input
+                    inputMode="decimal"
+                    value={form.cout_unitaire_moyen}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        cout_unitaire_moyen: event.target.value,
+                      })
+                    }
+                  />
                 </label>
 
                 <label className="field">

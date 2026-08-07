@@ -75,6 +75,20 @@ class MouvementStock(Base):
         nullable=True,
     )
     quantite: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    prix_unitaire_ht: Mapped[Decimal | None] = mapped_column(
+        Numeric(14, 4),
+        nullable=True,
+    )
+    cout_unitaire_applique: Mapped[Decimal] = mapped_column(
+        Numeric(14, 4),
+        default=0,
+        nullable=False,
+    )
+    valeur_mouvement: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2),
+        default=0,
+        nullable=False,
+    )
     motif: Mapped[str | None] = mapped_column(String(150), nullable=True)
     commentaire: Mapped[str | None] = mapped_column(Text, nullable=True)
     operateur: Mapped[str | None] = mapped_column(String(120), nullable=True)

@@ -15,6 +15,7 @@ from app.models.stock import Stock
 from app.models.reservation import ReservationStock
 from app.models.utilisateur import Utilisateur
 from app.schemas.stock import StockRead, StockResume, StockSet
+from app.services.valorisation import actualiser_snapshot_mensuel
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 
@@ -261,6 +262,7 @@ def definir_stock(
                 )
             stock.quantite_physique = payload.quantite_physique
 
+        actualiser_snapshot_mensuel(db)
         db.commit()
         db.refresh(stock)
         return stock
@@ -335,6 +337,7 @@ def remettre_stock_a_zero(
         stock.quantite_physique = Decimal("0")
         stock.quantite_reservee = Decimal("0")
 
+        actualiser_snapshot_mensuel(db)
         db.commit()
         db.refresh(stock)
         return stock

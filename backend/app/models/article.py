@@ -39,6 +39,19 @@ class Article(Base):
     stock_minimum: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
     stock_maximum: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
     seuil_alerte: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=0)
+    cout_unitaire_moyen: Mapped[Decimal] = mapped_column(
+        Numeric(14, 4),
+        default=0,
+        nullable=False,
+    )
+    dernier_prix_achat: Mapped[Decimal | None] = mapped_column(
+        Numeric(14, 4),
+        nullable=True,
+    )
+    date_maj_cout: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     actif: Mapped[bool] = mapped_column(Boolean, default=True)
     date_creation: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

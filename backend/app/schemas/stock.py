@@ -14,6 +14,8 @@ class ArticleStockRead(BaseModel):
     stock_minimum: Decimal
     stock_maximum: Decimal
     seuil_alerte: Decimal
+    cout_unitaire_moyen: Decimal
+    dernier_prix_achat: Decimal | None
 
 
 class EmplacementStockRead(BaseModel):
@@ -41,6 +43,9 @@ class StockRead(BaseModel):
     quantite_physique: Decimal
     quantite_reservee: Decimal
     quantite_disponible: Decimal
+    valeur_physique: Decimal
+    valeur_reservee: Decimal
+    valeur_disponible: Decimal
     date_modification: datetime
     article: ArticleStockRead
     emplacement: EmplacementStockRead

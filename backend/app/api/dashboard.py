@@ -112,6 +112,21 @@ def tableau_de_bord(
         )
     )
 
+    valeur_stock_physique = Decimal("0")
+    valeur_stock_reservee = Decimal("0")
+    for article in articles:
+        physique, reservee = totaux_stock.get(
+            article.id,
+            (Decimal("0"), Decimal("0")),
+        )
+        cout = article.cout_unitaire_moyen or Decimal("0")
+        valeur_stock_physique += physique * cout
+        valeur_stock_reservee += reservee * cout
+
+    valeur_stock_disponible = (
+        valeur_stock_physique - valeur_stock_reservee
+    )
+
     horizon = aujourd_hui + timedelta(days=HORIZON_PEREMPTION_JOURS)
     lots = list(
         db.scalars(
@@ -228,6 +243,22 @@ def tableau_de_bord(
         for inventaire in inventaires
     ]
 
+    valeur_lots_a_perimer = sum(
+        (
+            item.quantite_physique
+            * (
+                db.get(Article, next(
+                    lot.article_id
+                    for lot in lots
+                    if lot.id == item.lot_id
+                )).cout_unitaire_moyen
+                or Decimal("0")
+            )
+            for item in alertes_lots
+        ),
+        Decimal("0"),
+    )
+
     return DashboardRead(
         date_reference=aujourd_hui,
         kpis=DashboardKpiRead(
@@ -239,6 +270,10 @@ def tableau_de_bord(
             preparations_en_retard=preparations_retard,
             inventaires_en_cours=len(inventaires),
             retours_en_attente=retours_en_attente,
+            valeur_stock_physique=valeur_stock_physique,
+            valeur_stock_reservee=valeur_stock_reservee,
+            valeur_stock_disponible=valeur_stock_disponible,
+            valeur_lots_a_perimer=valeur_lots_a_perimer,
         ),
         stocks=alertes_stock[:30],
         lots=alertes_lots[:30],

@@ -26,6 +26,8 @@ type Article = {
   stock_minimum: string;
   stock_maximum: string;
   seuil_alerte: string;
+  cout_unitaire_moyen: string;
+  dernier_prix_achat: string | null;
   famille_relation: { code: string } | null;
 };
 
@@ -50,6 +52,9 @@ type Stock = {
   quantite_physique: string;
   quantite_reservee: string;
   quantite_disponible: string;
+  valeur_physique: string;
+  valeur_reservee: string;
+  valeur_disponible: string;
   date_modification: string;
   article: Article;
   emplacement: Emplacement;
@@ -439,6 +444,8 @@ export default function StocksPage() {
                 <th>Physique</th>
                 <th>Réservé</th>
                 <th>Disponible</th>
+                <th>CUMP</th>
+                <th>Valeur disponible</th>
                 <th>Mini</th>
                 <th>Statut</th>
                 {adminTechnique && <th aria-label="Actions" />}
@@ -481,6 +488,20 @@ export default function StocksPage() {
                       <strong>
                         {Number(stock.quantite_disponible).toLocaleString("fr-FR")}{" "}
                         {stock.article.unite}
+                      </strong>
+                    </td>
+                    <td>
+                      {Number(stock.article.cout_unitaire_moyen).toLocaleString(
+                        "fr-FR",
+                        { style: "currency", currency: "EUR" }
+                      )}
+                    </td>
+                    <td>
+                      <strong>
+                        {Number(stock.valeur_disponible).toLocaleString(
+                          "fr-FR",
+                          { style: "currency", currency: "EUR" }
+                        )}
                       </strong>
                     </td>
                     <td>
