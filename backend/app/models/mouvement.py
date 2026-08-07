@@ -59,6 +59,14 @@ class MouvementStock(Base):
         index=True,
         nullable=True,
     )
+    besoin_reapprovisionnement_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "besoins_reapprovisionnement.id",
+            ondelete="RESTRICT",
+        ),
+        index=True,
+        nullable=True,
+    )
     ligne_preparation_id: Mapped[int | None] = mapped_column(
         ForeignKey("lignes_preparation.id", ondelete="RESTRICT"),
         index=True,
@@ -136,6 +144,11 @@ class MouvementStock(Base):
     preparation = relationship(
         "Preparation",
         foreign_keys=[preparation_id],
+        lazy="joined",
+    )
+    besoin_reapprovisionnement = relationship(
+        "BesoinReapprovisionnement",
+        foreign_keys=[besoin_reapprovisionnement_id],
         lazy="joined",
     )
     ligne_preparation = relationship(

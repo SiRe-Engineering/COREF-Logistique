@@ -58,6 +58,7 @@ class MouvementCreate(BaseModel):
     affaire_id: int | None = None
     inventaire_id: int | None = None
     preparation_id: int | None = None
+    besoin_reapprovisionnement_id: int | None = None
     ligne_preparation_id: int | None = None
     emplacement_source_id: int | None = None
     emplacement_destination_id: int | None = None
@@ -124,6 +125,7 @@ class MouvementRead(BaseModel):
     affaire_id: int | None
     inventaire_id: int | None
     preparation_id: int | None
+    besoin_reapprovisionnement_id: int | None
     ligne_preparation_id: int | None
     emplacement_source_id: int | None
     emplacement_destination_id: int | None

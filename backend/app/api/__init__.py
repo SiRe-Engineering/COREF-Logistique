@@ -14,6 +14,7 @@ from app.api.magasin import router as magasin_router
 from app.api.materiels import router as materiels_router
 from app.api.mouvements import router as mouvements_router
 from app.api.preparations import router as preparations_router
+from app.api.reapprovisionnement import router as reapprovisionnement_router
 from app.api.reservations import (
     router_notifications,
     router_reservations,
@@ -39,6 +40,7 @@ __all__ = [
     "materiels_router",
     "mouvements_router",
     "preparations_router",
+    "reapprovisionnement_router",
     "router_notifications",
     "router_reservations",
     "stocks_router",

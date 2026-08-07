@@ -18,6 +18,7 @@ from app.api import (
     materiels_router,
     mouvements_router,
     preparations_router,
+    reapprovisionnement_router,
     router_notifications,
     router_reservations,
     stocks_router,
@@ -57,6 +58,7 @@ app.include_router(alertes_router)
 app.include_router(materiels_router)
 app.include_router(inventaires_router)
 app.include_router(preparations_router)
+app.include_router(reapprovisionnement_router)
 app.include_router(mouvements_router)
 app.include_router(articles_router)
 app.include_router(valorisation_router)

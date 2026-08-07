@@ -9,6 +9,7 @@ from app.models.lot_beton import LotBeton, StockLot
 from app.models.materiel import Materiel
 from app.models.mouvement import MouvementStock
 from app.models.preparation import LignePreparation, Preparation
+from app.models.reapprovisionnement import BesoinReapprovisionnement
 from app.models.reservation import Notification, ReservationStock
 from app.models.stock import Stock
 from app.models.utilisateur import SessionUtilisateur, Utilisateur
@@ -29,6 +30,7 @@ __all__ = [
     "MouvementStock",
     "Notification",
     "Preparation",
+    "BesoinReapprovisionnement",
     "ReservationStock",
     "SessionUtilisateur",
     "SousFamille",
