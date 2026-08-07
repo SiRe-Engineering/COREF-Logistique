@@ -322,3 +322,38 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.alertBanner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid #fecdca;
+  border-left: 4px solid #d92d20;
+  border-radius: 12px;
+  background: #fef3f2;
+  color: #912018;
+  text-decoration: none;
+}
+
+.alertBanner > div {
+  display: grid;
+  gap: 2px;
+}
+
+.alertBanner span {
+  font-size: .78rem;
+}
+
+@media (max-width: 700px) {
+  .alertBanner {
+    grid-template-columns: auto 1fr;
+  }
+
+  .alertBanner > span:last-child {
+    grid-column: 2;
+  }
+}

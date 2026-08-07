@@ -1,4 +1,5 @@
 from app.models.affaire import Affaire
+from app.models.alerte import AlerteLogistique
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.demande_sortie import DemandeSortie
@@ -15,6 +16,7 @@ from app.models.valorisation import SnapshotValorisationStock
 
 __all__ = [
     "Affaire",
+    "AlerteLogistique",
     "Article",
     "Emplacement",
     "DemandeSortie",

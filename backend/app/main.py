@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     affaires_router,
+    alertes_router,
     articles_router,
     auth_router,
     emplacements_router,
@@ -52,6 +53,7 @@ app.include_router(router_notifications)
 app.include_router(lots_beton_router)
 app.include_router(magasin_router)
 app.include_router(affaires_router)
+app.include_router(alertes_router)
 app.include_router(materiels_router)
 app.include_router(inventaires_router)
 app.include_router(preparations_router)

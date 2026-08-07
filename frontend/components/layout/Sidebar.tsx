@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  BellRing,
   BriefcaseBusiness,
   ClipboardCheck,
   ClipboardList,
@@ -35,6 +36,7 @@ export function Sidebar() {
 
   const navigation = [
     { href: "/", label: "Tableau de bord", icon: Gauge },
+    { href: "/alertes", label: "Alertes", icon: BellRing },
     { href: "/articles", label: "Articles", icon: PackageSearch },
     { href: "#", label: "Familles", icon: Shapes, disabled: true },
     { href: "/stocks", label: "Stocks", icon: Warehouse },

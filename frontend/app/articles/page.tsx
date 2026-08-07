@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,6 +10,7 @@ import {
   Search,
   Trash2,
   Printer,
+  Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +39,8 @@ type Article = {
   sous_famille_id: number | null;
   unite: string;
   stock_minimum: string;
+  stock_maximum: string;
+  seuil_alerte: string;
   cout_unitaire_moyen: string;
   dernier_prix_achat: string | null;
   date_maj_cout: string | null;
@@ -59,6 +63,17 @@ const initialForm = {
   cout_unitaire_moyen: "0",
 };
 
+const initialEditForm = {
+  reference: "",
+  designation: "",
+  famille_id: "",
+  sous_famille_id: "",
+  unite: "unité",
+  stock_minimum: "0",
+  stock_maximum: "0",
+  seuil_alerte: "0",
+};
+
 function familleTone(nom: string | undefined) {
   if (nom === "Béton") return "beton" as const;
   if (nom === "Isolants") return "isolants" as const;
@@ -71,6 +86,8 @@ export default function ArticlesPage() {
   const [recherche, setRecherche] = useState("");
   const [filtreFamille, setFiltreFamille] = useState("");
   const [modalOuverte, setModalOuverte] = useState(false);
+  const [editionOuverte, setEditionOuverte] = useState(false);
+  const [monte, setMonte] = useState(false);
   const [articleSelectionne, setArticleSelectionne] = useState<Article | null>(null);
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -81,6 +98,7 @@ export default function ArticlesPage() {
     type: "success" | "error";
   } | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [editForm, setEditForm] = useState(initialEditForm);
 
   async function chargerDonnees() {
     setChargement(true);
@@ -115,10 +133,22 @@ export default function ArticlesPage() {
     chargerDonnees();
   }, []);
 
+  useEffect(() => {
+    setMonte(true);
+  }, []);
+
   const familleSelectionnee = useMemo(
     () =>
       familles.find((famille) => famille.id === Number(form.famille_id)) ?? null,
     [familles, form.famille_id]
+  );
+
+  const familleEdition = useMemo(
+    () =>
+      familles.find(
+        (famille) => famille.id === Number(editForm.famille_id)
+      ) ?? null,
+    [familles, editForm.famille_id]
   );
 
   const articlesFiltres = useMemo(() => {
@@ -219,6 +249,109 @@ export default function ArticlesPage() {
       setToast({
         type: "success",
         message: `Article ${nouvelArticle.reference} créé.`,
+      });
+    } catch (cause) {
+      setToast({
+        type: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Une erreur inattendue est survenue.",
+      });
+    } finally {
+      setEnregistrement(false);
+    }
+  }
+
+  function ouvrirEdition(article: Article) {
+    setEditForm({
+      reference: article.reference,
+      designation: article.designation,
+      famille_id: article.famille_id?.toString() ?? "",
+      sous_famille_id: article.sous_famille_id?.toString() ?? "",
+      unite: article.unite,
+      stock_minimum: article.stock_minimum ?? "0",
+      stock_maximum: article.stock_maximum ?? "0",
+      seuil_alerte: article.seuil_alerte ?? "0",
+    });
+    setEditionOuverte(true);
+  }
+
+  async function enregistrerEdition(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!articleSelectionne) return;
+
+    const stockMinimum = Number(editForm.stock_minimum.replace(",", "."));
+    const stockMaximum = Number(editForm.stock_maximum.replace(",", "."));
+    const seuilAlerte = Number(editForm.seuil_alerte.replace(",", "."));
+
+    if (
+      !Number.isFinite(stockMinimum) ||
+      !Number.isFinite(stockMaximum) ||
+      !Number.isFinite(seuilAlerte) ||
+      stockMinimum < 0 ||
+      stockMaximum < 0 ||
+      seuilAlerte < 0
+    ) {
+      setToast({
+        type: "error",
+        message: "Les paramètres de stock doivent être des nombres positifs.",
+      });
+      return;
+    }
+
+    if (stockMaximum > 0 && stockMaximum < stockMinimum) {
+      setToast({
+        type: "error",
+        message: "Le stock maximum ne peut pas être inférieur au stock minimum.",
+      });
+      return;
+    }
+
+    setEnregistrement(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/articles/${articleSelectionne.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reference: editForm.reference.trim().toUpperCase(),
+            designation: editForm.designation.trim(),
+            famille_id: editForm.famille_id
+              ? Number(editForm.famille_id)
+              : null,
+            sous_famille_id: editForm.sous_famille_id
+              ? Number(editForm.sous_famille_id)
+              : null,
+            unite: editForm.unite,
+            stock_minimum: stockMinimum,
+            stock_maximum: stockMaximum,
+            seuil_alerte: seuilAlerte,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Modification impossible."
+        );
+      }
+
+      const articleMisAJour: Article = data;
+      setArticles((actuels) =>
+        actuels.map((article) =>
+          article.id === articleMisAJour.id ? articleMisAJour : article
+        )
+      );
+      setArticleSelectionne(articleMisAJour);
+      setEditionOuverte(false);
+      setToast({
+        type: "success",
+        message: `${articleMisAJour.reference} a été mis à jour.`,
       });
     } catch (cause) {
       setToast({
@@ -450,6 +583,8 @@ export default function ArticlesPage() {
               <div><dt>Sous-famille</dt><dd>{articleSelectionne.sous_famille_relation?.nom ?? "—"}</dd></div>
               <div><dt>Unité</dt><dd>{articleSelectionne.unite}</dd></div>
               <div><dt>Stock minimum</dt><dd>{articleSelectionne.stock_minimum}</dd></div>
+              <div><dt>Stock maximum</dt><dd>{articleSelectionne.stock_maximum}</dd></div>
+              <div><dt>Seuil d’alerte</dt><dd>{articleSelectionne.seuil_alerte}</dd></div>
               <div>
                 <dt>CUMP</dt>
                 <dd>
@@ -475,6 +610,16 @@ export default function ArticlesPage() {
                 </dd>
               </div>
             </dl>
+
+            <div className="drawer-actions">
+              <Button
+                variant="secondary"
+                onClick={() => ouvrirEdition(articleSelectionne)}
+              >
+                <Pencil size={17} />
+                Modifier l’article
+              </Button>
+            </div>
 
             <section className="drawer-section">
               <h4>Identification</h4>
@@ -529,6 +674,223 @@ export default function ArticlesPage() {
           </div>
         )}
       </Drawer>
+
+      {monte &&
+        editionOuverte &&
+        articleSelectionne &&
+        createPortal(
+        <div
+          className="modal-backdrop"
+          style={{
+            zIndex: 10000,
+          }}
+          onMouseDown={() => setEditionOuverte(false)}
+        >
+          <section
+            className="modal-card modal-card-wide"
+            style={{
+              position: "relative",
+              zIndex: 10001,
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">Référentiel article</span>
+                <h2>Modifier {articleSelectionne.reference}</h2>
+                <p>
+                  Corrigez l’identification et les paramètres logistiques.
+                  Le CUMP reste géré séparément.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={enregistrerEdition}>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Référence *</span>
+                  <input
+                    required
+                    value={editForm.reference}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        reference: event.target.value,
+                      })
+                    }
+                  />
+                  <small>
+                    À modifier uniquement pour corriger une référence.
+                  </small>
+                </label>
+
+                <label className="field field-wide">
+                  <span>Désignation *</span>
+                  <input
+                    required
+                    autoFocus
+                    value={editForm.designation}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        designation: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Famille</span>
+                  <select
+                    value={editForm.famille_id}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        famille_id: event.target.value,
+                        sous_famille_id: "",
+                      })
+                    }
+                  >
+                    <option value="">Aucune</option>
+                    {familles.map((famille) => (
+                      <option key={famille.id} value={famille.id}>
+                        {famille.nom}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Sous-famille</span>
+                  <select
+                    value={editForm.sous_famille_id}
+                    disabled={!familleEdition}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        sous_famille_id: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Aucune</option>
+                    {familleEdition?.sous_familles.map((sf) => (
+                      <option key={sf.id} value={sf.id}>
+                        {sf.nom}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Unité *</span>
+                  <select
+                    value={editForm.unite}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        unite: event.target.value,
+                      })
+                    }
+                  >
+                    {[
+                      "unité",
+                      "pièce",
+                      "sac",
+                      "kg",
+                      "tonne",
+                      "m",
+                      "m²",
+                      "m³",
+                      "litre",
+                      "rouleau",
+                      "boîte",
+                      "carton",
+                      "palette",
+                      "paquet",
+                    ].map((unite) => (
+                      <option key={unite} value={unite}>
+                        {unite}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="drawer-section">
+                <h4>Paramètres de stock</h4>
+                <div className="form-grid">
+                  <label className="field">
+                    <span>Stock minimum</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.stock_minimum}
+                      onChange={(event) =>
+                        setEditForm({
+                          ...editForm,
+                          stock_minimum: event.target.value,
+                        })
+                      }
+                    />
+                    <small>
+                      Niveau cible minimal de fonctionnement.
+                    </small>
+                  </label>
+
+                  <label className="field">
+                    <span>Seuil d’alerte</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.seuil_alerte}
+                      onChange={(event) =>
+                        setEditForm({
+                          ...editForm,
+                          seuil_alerte: event.target.value,
+                        })
+                      }
+                    />
+                    <small>
+                      Déclenche l’alerte logistique du Lot K.
+                    </small>
+                  </label>
+
+                  <label className="field">
+                    <span>Stock maximum</span>
+                    <input
+                      inputMode="decimal"
+                      value={editForm.stock_maximum}
+                      onChange={(event) =>
+                        setEditForm({
+                          ...editForm,
+                          stock_maximum: event.target.value,
+                        })
+                      }
+                    />
+                    <small>
+                      0 = maximum non défini.
+                    </small>
+                  </label>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEditionOuverte(false)}
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={enregistrement}>
+                  {enregistrement
+                    ? "Enregistrement…"
+                    : "Enregistrer les modifications"}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>,
+          document.body
+        )}
 
       {modalOuverte && (
         <div className="modal-backdrop" onMouseDown={() => setModalOuverte(false)}>

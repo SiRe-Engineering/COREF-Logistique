@@ -18,6 +18,13 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { entetesAuthentifiees } from "@/lib/auth";
 import styles from "./page.module.css";
 
+type AlertResume = {
+  actives: number;
+  critiques: number;
+  avertissements: number;
+  acquittees: number;
+};
+
 type Notification = {
   id: number;
   titre: string;
@@ -97,13 +104,21 @@ export default function Dashboard() {
   const { utilisateur } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [alertResume, setAlertResume] = useState<AlertResume | null>(null);
 
   async function charger() {
-    const [notificationsResponse, dashboardResponse] = await Promise.all([
+    const [
+      notificationsResponse,
+      dashboardResponse,
+      alertesResponse,
+    ] = await Promise.all([
       fetch(`${API_URL}/api/notifications/me`, {
         headers: entetesAuthentifiees(),
       }),
       fetch(`${API_URL}/api/dashboard`, {
+        headers: entetesAuthentifiees(),
+      }),
+      fetch(`${API_URL}/api/alertes/resume`, {
         headers: entetesAuthentifiees(),
       }),
     ]);
@@ -115,6 +130,9 @@ export default function Dashboard() {
     );
     setDashboard(
       dashboardResponse.ok ? await dashboardResponse.json() : null
+    );
+    setAlertResume(
+      alertesResponse.ok ? await alertesResponse.json() : null
     );
   }
 
@@ -144,6 +162,22 @@ export default function Dashboard() {
           Priorités, alertes et activité opérationnelle de COREF Logistique.
         </p>
       </div>
+
+      {alertResume && alertResume.actives > 0 && (
+        <Link href="/alertes" className={styles.alertBanner}>
+          <AlertTriangle size={20} />
+          <div>
+            <strong>
+              {alertResume.actives} alerte(s) logistique(s) ouverte(s)
+            </strong>
+            <span>
+              {alertResume.critiques} critique(s) ·{" "}
+              {alertResume.avertissements} avertissement(s)
+            </span>
+          </div>
+          <span>Ouvrir le centre d’alertes →</span>
+        </Link>
+      )}
 
       {kpis && (
         <section className={styles.valuation}>
