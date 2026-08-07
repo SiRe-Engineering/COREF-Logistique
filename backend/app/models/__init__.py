@@ -1,3 +1,4 @@
+from app.models.achats import Fournisseur, ArticleFournisseur, CommandeAchat, LigneCommandeAchat
 from app.models.affaire import Affaire
 from app.models.alerte import AlerteLogistique
 from app.models.article import Article
@@ -17,6 +18,10 @@ from app.models.valorisation import SnapshotValorisationStock
 
 __all__ = [
     "Affaire",
+    "Fournisseur",
+    "ArticleFournisseur",
+    "CommandeAchat",
+    "LigneCommandeAchat",
     "AlerteLogistique",
     "Article",
     "Emplacement",

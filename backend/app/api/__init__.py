@@ -1,3 +1,4 @@
+from app.api.achats import router as achats_router
 from app.api.affaires import router as affaires_router
 from app.api.alertes import router as alertes_router
 from app.api.articles import router as articles_router
@@ -24,6 +25,7 @@ from app.api.utilisateurs import router as utilisateurs_router
 from app.api.valorisation import router as valorisation_router
 
 __all__ = [
+    "achats_router",
     "affaires_router",
     "alertes_router",
     "articles_router",

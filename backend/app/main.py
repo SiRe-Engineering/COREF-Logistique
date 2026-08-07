@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    achats_router,
     affaires_router,
     alertes_router,
     articles_router,
@@ -41,6 +42,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(achats_router)
 app.include_router(auth_router)
 app.include_router(utilisateurs_router)
 app.include_router(familles_router)
