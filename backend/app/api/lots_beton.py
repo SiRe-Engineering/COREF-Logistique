@@ -88,6 +88,24 @@ def lister_lots(
     return list(db.scalars(requete).unique().all())
 
 
+@router.get("/{lot_id}", response_model=LotBetonRead)
+def lire_lot(
+    lot_id: int,
+    db: Session = Depends(get_db),
+) -> LotBeton:
+    lot = db.scalar(
+        select(LotBeton)
+        .options(selectinload(LotBeton.stocks))
+        .where(
+            LotBeton.id == lot_id,
+            LotBeton.supprime.is_(False),
+        )
+    )
+    if lot is None:
+        raise HTTPException(status_code=404, detail="Lot introuvable.")
+    return lot
+
+
 @router.post(
     "",
     response_model=LotBetonRead,

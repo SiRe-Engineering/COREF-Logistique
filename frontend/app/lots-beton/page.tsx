@@ -7,6 +7,7 @@ import {
   FileText,
   FlaskConical,
   Plus,
+  Printer,
   Search,
   TriangleAlert,
   Trash2,
@@ -363,7 +364,7 @@ export default function LotsBetonPage() {
                 <th>Stock disponible</th>
                 <th>Documents</th>
                 <th>Statut</th>
-                {adminTechnique && <th aria-label="Actions" />}
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -433,25 +434,41 @@ export default function LotsBetonPage() {
                     <td>
                       <Badge tone={statut.tone}>{statut.label}</Badge>
                     </td>
-                    {adminTechnique && (
-                      <td>
+                    <td>
+                      <div className={styles.documents}>
                         <button
                           type="button"
-                          className="icon-button danger"
-                          onClick={() => supprimerLot(lot)}
-                          title="Supprimer ce lot"
+                          className="icon-button"
+                          onClick={() =>
+                            window.open(
+                              `/lots-beton/${lot.id}/etiquette`,
+                              "_blank",
+                              "noopener,noreferrer"
+                            )
+                          }
+                          title="Imprimer l’étiquette QR"
                         >
-                          <Trash2 size={15} />
+                          <Printer size={15} />
                         </button>
-                      </td>
-                    )}
+                        {adminTechnique && (
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => supprimerLot(lot)}
+                            title="Supprimer ce lot"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
 
               {lotsFiltres.length === 0 && (
                 <tr>
-                  <td colSpan={adminTechnique ? 9 : 8} className="empty-state">
+                  <td colSpan={9} className="empty-state">
                     <TriangleAlert size={24} />
                     <strong>Aucun lot béton</strong>
                     <span>Créez le premier lot fournisseur.</span>

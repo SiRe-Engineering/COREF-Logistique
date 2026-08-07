@@ -8,6 +8,7 @@ import {
   PackagePlus,
   Search,
   Trash2,
+  Printer,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -474,6 +475,23 @@ export default function ArticlesPage() {
                 </dd>
               </div>
             </dl>
+
+            <section className="drawer-section">
+              <h4>Identification</h4>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  window.open(
+                    `/articles/${articleSelectionne.id}/etiquette`,
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+              >
+                <Printer size={17} />
+                Imprimer l’étiquette QR
+              </Button>
+            </section>
 
             <section className="drawer-section">
               <h4>Valorisation</h4>

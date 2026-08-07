@@ -1351,7 +1351,33 @@ export default function PreparationsPage() {
                   }
                 >
                   <Printer size={16} />
-                  Imprimer
+                  Ordre de préparation
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    window.open(
+                      `/preparations/${selection.id}/expedition`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                >
+                  <Printer size={16} />
+                  Bon d’expédition
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    window.open(
+                      `/preparations/${selection.id}/retour`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                >
+                  <Printer size={16} />
+                  Fiche de retour
                 </Button>
 
                 {editable && (

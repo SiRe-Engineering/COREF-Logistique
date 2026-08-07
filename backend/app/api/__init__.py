@@ -3,6 +3,7 @@ from app.api.articles import router as articles_router
 from app.api.auth import router as auth_router
 from app.api.emplacements import router as emplacements_router
 from app.api.demandes_sortie import router as demandes_sortie_router
+from app.api.documents import router as documents_router
 from app.api.dashboard import router as dashboard_router
 from app.api.familles import router as familles_router
 from app.api.health import router as health_router
@@ -26,6 +27,7 @@ __all__ = [
     "auth_router",
     "emplacements_router",
     "demandes_sortie_router",
+    "documents_router",
     "dashboard_router",
     "familles_router",
     "health_router",

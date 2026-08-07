@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Plus,
+  Printer,
   Search,
   Scale,
 } from "lucide-react";
