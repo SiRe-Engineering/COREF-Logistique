@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { entetesAuthentifiees } from "@/lib/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -245,11 +247,11 @@ export default function PreparationsPage() {
   async function charger() {
     try {
       const responses = await Promise.all([
-        fetch(`${API_URL}/api/preparations`),
-        fetch(`${API_URL}/api/affaires`),
-        fetch(`${API_URL}/api/articles`),
-        fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-        fetch(`${API_URL}/api/lots-beton`),
+        apiFetch(`${API_URL}/api/preparations`),
+        apiFetch(`${API_URL}/api/affaires`),
+        apiFetch(`${API_URL}/api/articles`),
+        apiFetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+        apiFetch(`${API_URL}/api/lots-beton`),
       ]);
 
       if (responses.some((response) => !response.ok)) throw new Error();
@@ -409,7 +411,7 @@ export default function PreparationsPage() {
 
   async function creer(event: FormEvent) {
     event.preventDefault();
-    const response = await fetch(`${API_URL}/api/preparations`, {
+    const response = await apiFetch(`${API_URL}/api/preparations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -439,7 +441,7 @@ export default function PreparationsPage() {
     event.preventDefault();
     if (!selection) return;
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/preparations/${selection.id}`,
       {
         method: "PATCH",
@@ -473,7 +475,7 @@ export default function PreparationsPage() {
       ? `${API_URL}/api/preparations/${selection.id}/lignes/${ligneEditee.id}`
       : `${API_URL}/api/preparations/${selection.id}/lignes`;
 
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: ligneEditee ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -519,7 +521,7 @@ export default function PreparationsPage() {
 
   async function supprimerLigne(ligne: Ligne) {
     if (!selection) return;
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}`,
       { method: "DELETE" }
     );
@@ -588,7 +590,7 @@ export default function PreparationsPage() {
       motifEcart = motif.trim();
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}`,
       {
         method: "PATCH",
@@ -649,7 +651,7 @@ export default function PreparationsPage() {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/valider`,
         {
           method: "POST",
@@ -687,7 +689,7 @@ export default function PreparationsPage() {
   async function demarrerPreparation() {
     if (!selection || selection.statut !== "VALIDEE") return;
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/preparations/${selection.id}/demarrer`,
       {
         method: "POST",
@@ -733,7 +735,7 @@ export default function PreparationsPage() {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/expedier`,
         {
           method: "POST",
@@ -773,7 +775,7 @@ export default function PreparationsPage() {
     if (!selection || selection.statut !== "EXPEDIEE") return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/retours/disponibles`,
         {
           headers: entetesAuthentifiees(),
@@ -878,7 +880,7 @@ export default function PreparationsPage() {
 
     setRetourEnregistrement(true);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/retours`,
         {
           method: "POST",
@@ -928,7 +930,7 @@ export default function PreparationsPage() {
     if (!window.confirm(`Supprimer définitivement ${selection.reference} ?`)) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}`,
         { method: "DELETE", headers: entetesAuthentifiees() }
       );
@@ -1065,7 +1067,7 @@ export default function PreparationsPage() {
     if (!commentaire?.trim()) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}/remplacement`,
         {
           method: "POST",
@@ -1123,7 +1125,7 @@ export default function PreparationsPage() {
     if (decision === "refuser" && !commentaire?.trim()) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/preparations/${selection.id}/lignes/${ligne.id}/remplacement/${decision}`,
         {
           method: "POST",

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   ChartNoAxesCombined,
@@ -68,7 +70,7 @@ export default function ValorisationPage() {
 
   async function charger() {
     try {
-      const response = await fetch(`${API_URL}/api/valorisation`, {
+      const response = await apiFetch(`${API_URL}/api/valorisation`, {
         headers: entetesAuthentifiees(),
       });
       const json = await response.json().catch(() => null);

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
@@ -100,7 +102,7 @@ export default function ImpressionPreparationPage() {
   useEffect(() => {
     async function charger() {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_URL}/api/preparations/${params.id}`
         );
         const data = await response.json().catch(() => null);

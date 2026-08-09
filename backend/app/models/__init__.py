@@ -1,3 +1,11 @@
+from app.models.inventaire_avance import CampagneInventaireAvance, LigneInventaireAvance
+from app.models.document_materiel import DocumentMateriel
+from app.models.intervention_materiel import InterventionMateriel
+from app.models.pret_materiel import PretMateriel
+from app.models.litige_fournisseur import LitigeFournisseur
+from app.models.non_conformite_fournisseur import NonConformiteFournisseur
+from app.models.reception_achat import ReceptionAchat
+from app.models.document_fournisseur import DocumentFournisseur
 from app.models.achats import (
     ArticleFournisseur,
     CommandeAchat,
@@ -23,6 +31,15 @@ from app.models.utilisateur import SessionUtilisateur, Utilisateur
 from app.models.valorisation import SnapshotValorisationStock
 
 __all__ = [
+    "CampagneInventaireAvance",
+    "LigneInventaireAvance",
+    "DocumentMateriel",
+    "InterventionMateriel",
+    "PretMateriel",
+    "LitigeFournisseur",
+    "NonConformiteFournisseur",
+    "ReceptionAchat",
+    "DocumentFournisseur",
     "Affaire",
     "Fournisseur",
     "ArticleFournisseur",
@@ -51,3 +68,7 @@ __all__ = [
     "Utilisateur",
     "SnapshotValorisationStock",
 ]
+
+
+
+

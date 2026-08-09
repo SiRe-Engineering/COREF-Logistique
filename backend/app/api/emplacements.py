@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.emplacement import Emplacement
 from app.schemas.emplacement import (
     EmplacementCreate,
@@ -11,7 +12,7 @@ from app.schemas.emplacement import (
     EmplacementUpdate,
 )
 
-router = APIRouter(prefix="/api/emplacements", tags=["Emplacements"])
+router = APIRouter(prefix="/api/emplacements", tags=["Emplacements"], dependencies=[Depends(utilisateur_courant)])
 
 
 def generer_code(payload: EmplacementCreate) -> str:

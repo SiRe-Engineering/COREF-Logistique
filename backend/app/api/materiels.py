@@ -6,12 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.affaire import Affaire
 from app.models.emplacement import Emplacement
 from app.models.materiel import Materiel
 from app.schemas.materiel import MaterielCreate, MaterielRead, MaterielUpdate
 
-router = APIRouter(prefix="/api/materiels", tags=["Matériels"])
+router = APIRouter(prefix="/api/materiels", tags=["Matériels"], dependencies=[Depends(utilisateur_courant)])
 
 
 def verifier_relations(

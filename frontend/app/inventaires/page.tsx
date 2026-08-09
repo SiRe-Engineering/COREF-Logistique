@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { entetesAuthentifiees } from "@/lib/auth";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -113,13 +115,13 @@ export default function InventairesPage() {
     try {
       const [inventairesResponse, emplacementsResponse, famillesResponse] =
         await Promise.all([
-          fetch(`${API_URL}/api/inventaires`, {
+          apiFetch(`${API_URL}/api/inventaires`, {
             headers: entetesAuthentifiees(),
           }),
-          fetch(
+          apiFetch(
             `${API_URL}/api/emplacements?racines_uniquement=false`
           ),
-          fetch(`${API_URL}/api/familles`),
+          apiFetch(`${API_URL}/api/familles`),
         ]);
 
       if (
@@ -198,7 +200,7 @@ export default function InventairesPage() {
     event.preventDefault();
 
     try {
-      const response = await fetch(`${API_URL}/api/inventaires`, {
+      const response = await apiFetch(`${API_URL}/api/inventaires`, {
         method: "POST",
         headers: entetesAuthentifiees({
           "Content-Type": "application/json",
@@ -260,7 +262,7 @@ export default function InventairesPage() {
 
     setSauvegarde(ligneId);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/inventaires/${inventaireId}/lignes/${ligneId}`,
         {
           method: "PATCH",
@@ -329,7 +331,7 @@ export default function InventairesPage() {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/inventaires/${selection.id}/valider`,
         {
           method: "POST",

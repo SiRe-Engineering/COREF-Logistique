@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.article import Article
 from app.services.valorisation import actualiser_snapshot_mensuel
 from app.models.famille import Famille, SousFamille
 from app.schemas.article import ArticleCreate, ArticleRead, ArticleUpdate
 
-router = APIRouter(prefix="/api/articles", tags=["Articles"])
+router = APIRouter(prefix="/api/articles", tags=["Articles"], dependencies=[Depends(utilisateur_courant)])
 
 
 def verifier_referentiel(

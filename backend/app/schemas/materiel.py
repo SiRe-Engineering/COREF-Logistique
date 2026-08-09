@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 EtatMateriel = Literal[
     "DISPONIBLE",
     "EN_CHANTIER",
+    "EN_PRET",
     "EN_MAINTENANCE",
     "HORS_SERVICE",
     "PERDU",

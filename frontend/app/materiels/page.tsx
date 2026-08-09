@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -14,6 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Toast } from "@/components/ui/Toast";
+import { MaterielTabs } from "@/components/materiel/MaterielTabs";
 import styles from "./page.module.css";
 
 type Emplacement = {
@@ -69,6 +72,7 @@ const categories = [
 const etats = [
   { value: "DISPONIBLE", label: "Disponible" },
   { value: "EN_CHANTIER", label: "En chantier" },
+  { value: "EN_PRET", label: "En déplacement" },
   { value: "EN_MAINTENANCE", label: "En maintenance" },
   { value: "HORS_SERVICE", label: "Hors service" },
   { value: "PERDU", label: "Perdu" },
@@ -98,11 +102,17 @@ function statutMateriel(etat: string) {
   if (etat === "EN_CHANTIER") {
     return { label: "En chantier", tone: "isolants" as const };
   }
+  if (etat === "EN_PRET") {
+    return { label: "En déplacement", tone: "isolants" as const };
+  }
   if (etat === "EN_MAINTENANCE") {
     return { label: "Maintenance", tone: "warning" as const };
   }
+  if (etat === "PERDU") {
+    return { label: "Perdu", tone: "beton" as const };
+  }
   return {
-    label: etat === "PERDU" ? "Perdu" : "Hors service",
+    label: "Hors service",
     tone: "beton" as const,
   };
 }
@@ -397,9 +407,9 @@ export default function MaterielsPage() {
     try {
       const [materielsResponse, emplacementsResponse, affairesResponse] =
         await Promise.all([
-          fetch(`${API_URL}/api/materiels`),
-          fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-          fetch(`${API_URL}/api/affaires`),
+          apiFetch(`${API_URL}/api/materiels`),
+          apiFetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+          apiFetch(`${API_URL}/api/affaires`),
         ]);
 
       if (
@@ -504,7 +514,7 @@ export default function MaterielsPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/materiels`, {
+      const response = await apiFetch(`${API_URL}/api/materiels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloadFormulaire()),
@@ -549,7 +559,7 @@ export default function MaterielsPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/materiels/${materielSelectionne.id}`,
         {
           method: "PATCH",
@@ -600,7 +610,7 @@ export default function MaterielsPage() {
 
   return (
     <div>
-      <div className="breadcrumb">Parc / Matériels</div>
+      <div className="breadcrumb">Parc / Matériels</div><MaterielTabs />
 
       <div className="page-heading page-heading-actions">
         <div>

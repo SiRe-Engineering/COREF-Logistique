@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import base64
+import binascii
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,6 +18,10 @@ from app.models.achats import (
     LigneCommandeAchat,
 )
 from app.models.article import Article
+from app.models.document_fournisseur import DocumentFournisseur
+from app.models.famille import Famille
+from app.models.lot_beton import LotBeton
+from app.models.reception_achat import ReceptionAchat
 from app.models.reapprovisionnement import BesoinReapprovisionnement
 from app.models.utilisateur import Utilisateur
 from app.schemas.achats import (
@@ -30,6 +36,7 @@ from app.schemas.achats import (
     FournisseurUpdate,
     HistoriquePrixFournisseurRead,
     ReceptionLigneCreate,
+    ReceptionLigneResult,
 )
 from app.schemas.mouvement import MouvementCreate
 from app.services.mouvements import executer_mouvement
@@ -464,7 +471,7 @@ def modifier_commande(
 
 @router.post(
     "/commandes/{commande_id}/lignes/{ligne_id}/reception",
-    response_model=CommandeRead,
+    response_model=ReceptionLigneResult,
 )
 def reception(
     commande_id: int,
@@ -503,6 +510,99 @@ def reception(
         else ligne.prix_unitaire_ht
     )
 
+    article = db.get(Article, ligne.article_id)
+    famille = (
+        db.get(Famille, article.famille_id)
+        if article is not None and article.famille_id
+        else None
+    )
+    est_beton = famille is not None and famille.code == "BET"
+
+    lot = None
+    fds_presente = None
+    avertissements = []
+
+    if est_beton:
+        if payload.lot_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Un lot béton est obligatoire pour cette réception.",
+            )
+        lot = db.get(LotBeton, payload.lot_id)
+        if lot is None or lot.article_id != ligne.article_id:
+            raise HTTPException(
+                status_code=422,
+                detail="Le lot béton sélectionné ne correspond pas à l'article.",
+            )
+        fds_presente = db.scalar(
+            select(DocumentFournisseur.id)
+            .where(
+                DocumentFournisseur.lot_beton_id == lot.id,
+                DocumentFournisseur.type_document == "FDS",
+            )
+            .limit(1)
+        ) is not None
+        if not fds_presente:
+            avertissements.append(
+                "Réception béton enregistrée sans FDS disponible pour le lot."
+            )
+
+    statut_qualite = "CONFORME"
+    if payload.conformite_visuelle == "NON_CONFORME":
+        statut_qualite = "NON_CONFORME"
+    elif payload.conformite_visuelle == "RESERVE":
+        statut_qualite = "SOUS_RESERVE"
+    elif est_beton and not fds_presente:
+        statut_qualite = "A_CONTROLER"
+
+    if payload.bon_livraison_contenu_base64:
+        if not payload.bon_livraison_nom_fichier or not payload.bon_livraison_type_mime:
+            raise HTTPException(
+                status_code=422,
+                detail="Nom et type du fichier BL sont obligatoires.",
+            )
+        if payload.bon_livraison_type_mime not in {
+            "application/pdf",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+        }:
+            raise HTTPException(
+                status_code=422,
+                detail="Le BL doit être un PDF ou une image.",
+            )
+        try:
+            contenu_bl = base64.b64decode(
+                payload.bon_livraison_contenu_base64,
+                validate=True,
+            )
+        except (ValueError, binascii.Error) as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="Le fichier BL est invalide.",
+            ) from exc
+        if len(contenu_bl) > 15 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail="Le BL dépasse 15 Mo.",
+            )
+        db.add(
+            DocumentFournisseur(
+                type_document="BON_LIVRAISON",
+                nom_fichier=payload.bon_livraison_nom_fichier,
+                type_mime=payload.bon_livraison_type_mime,
+                taille_octets=len(contenu_bl),
+                contenu=contenu_bl,
+                lot_beton_id=payload.lot_id,
+                fournisseur_id=commande.fournisseur_id,
+                commande_achat_id=commande.id,
+                article_id=ligne.article_id,
+                reference_document=payload.bon_livraison_reference,
+                commentaire=payload.commentaire_qualite,
+                depose_par=utilisateur.nom_complet,
+            )
+        )
+
     executer_mouvement(
         db,
         MouvementCreate(
@@ -523,6 +623,32 @@ def reception(
         valider_transaction=False,
     )
 
+    reception_qualite = ReceptionAchat(
+        commande_id=commande.id,
+        ligne_commande_id=ligne.id,
+        article_id=ligne.article_id,
+        lot_beton_id=payload.lot_id,
+        quantite=payload.quantite,
+        bon_livraison_reference=payload.bon_livraison_reference,
+        conformite_visuelle=payload.conformite_visuelle,
+        reserve_commentaire=payload.reserve_commentaire,
+        commentaire_qualite=payload.commentaire_qualite,
+        fds_presente=fds_presente,
+        statut_qualite=statut_qualite,
+        receptionne_par=utilisateur.nom_complet,
+    )
+    db.add(reception_qualite)
+    db.flush()
+
+    maintenant = datetime.now(timezone.utc)
+
+    if ligne.date_premiere_reception is None:
+        ligne.date_premiere_reception = maintenant
+    ligne.date_derniere_reception = maintenant
+
+    if commande.date_premiere_reception is None:
+        commande.date_premiere_reception = maintenant
+
     ligne.quantite_recue += payload.quantite
 
     if ligne.besoin:
@@ -542,9 +668,17 @@ def reception(
         (item.quantite_recue for item in commande.lignes),
         start=Decimal("0"),
     )
-    commande.statut = (
-        "RECUE" if recu >= total else "PARTIELLEMENT_RECUE"
-    )
+    if recu >= total:
+        commande.statut = "RECUE"
+        commande.date_reception_finale = maintenant
+    else:
+        commande.statut = "PARTIELLEMENT_RECUE"
 
     db.commit()
-    return _commande(db, commande.id)
+    commande_lue = _commande(db, commande.id)
+    return ReceptionLigneResult(
+        commande=commande_lue,
+        reception_id=reception_qualite.id,
+        statut_qualite=statut_qualite,
+        avertissements=avertissements,
+    )

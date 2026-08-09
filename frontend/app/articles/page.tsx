@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -104,8 +106,8 @@ export default function ArticlesPage() {
     setChargement(true);
     try {
       const [articlesResponse, famillesResponse] = await Promise.all([
-        fetch(`${API_URL}/api/articles`),
-        fetch(`${API_URL}/api/familles`),
+        apiFetch(`${API_URL}/api/articles`),
+        apiFetch(`${API_URL}/api/familles`),
       ]);
 
       if (!articlesResponse.ok || !famillesResponse.ok) {
@@ -216,7 +218,7 @@ export default function ArticlesPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/articles`, {
+      const response = await apiFetch(`${API_URL}/api/articles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -310,7 +312,7 @@ export default function ArticlesPage() {
 
     setEnregistrement(true);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/articles/${articleSelectionne.id}`,
         {
           method: "PATCH",
@@ -370,7 +372,7 @@ export default function ArticlesPage() {
     if (!window.confirm(`Archiver ${article.reference} ?`)) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/articles/${article.id}`, {
+      const response = await apiFetch(`${API_URL}/api/articles/${article.id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Archivage impossible.");
@@ -411,7 +413,7 @@ export default function ArticlesPage() {
       return;
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/articles/${article.id}`,
       {
         method: "PATCH",

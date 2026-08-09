@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
-from app.dependencies import exiger_roles
+from app.dependencies import exiger_roles, utilisateur_courant
 from app.models.article import Article
 from app.models.famille import Famille
 from app.models.lot_beton import LotBeton, StockLot
@@ -22,6 +22,7 @@ from app.schemas.lot_beton import (
 router = APIRouter(
     prefix="/api/lots-beton",
     tags=["Lots béton"],
+    dependencies=[Depends(utilisateur_courant)],
 )
 
 

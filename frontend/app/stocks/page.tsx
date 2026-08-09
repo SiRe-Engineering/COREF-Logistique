@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -134,11 +136,11 @@ export default function StocksPage() {
   async function charger() {
     try {
       const responses = await Promise.all([
-        fetch(`${API_URL}/api/stocks`),
-        fetch(`${API_URL}/api/articles`),
-        fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-        fetch(`${API_URL}/api/stocks/resume`),
-        fetch(`${API_URL}/api/lots-beton`),
+        apiFetch(`${API_URL}/api/stocks`),
+        apiFetch(`${API_URL}/api/articles`),
+        apiFetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+        apiFetch(`${API_URL}/api/stocks/resume`),
+        apiFetch(`${API_URL}/api/lots-beton`),
       ]);
 
       if (responses.some((response) => !response.ok)) {
@@ -174,7 +176,7 @@ export default function StocksPage() {
 
   async function ouvrirStock(stock: Stock) {
     setSelection(stock);
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/reservations?article_id=${stock.article_id}` +
         `&emplacement_id=${stock.emplacement_id}`
     );
@@ -243,7 +245,7 @@ export default function StocksPage() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/stocks`, {
+      const response = await apiFetch(`${API_URL}/api/stocks`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -302,7 +304,7 @@ export default function StocksPage() {
     if (!confirmation) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/stocks/${stock.id}/remise-a-zero`,
         {
           method: "POST",

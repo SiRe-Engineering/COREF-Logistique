@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -81,7 +83,7 @@ export default function UtilisateursPage() {
   ].includes(utilisateur.role);
 
   async function charger() {
-    const response = await fetch(`${API_URL}/api/utilisateurs`, {
+    const response = await apiFetch(`${API_URL}/api/utilisateurs`, {
       headers: entetesAuthentifiees(),
     });
 
@@ -124,7 +126,7 @@ export default function UtilisateursPage() {
     setErreur("");
 
     const edition = utilisateurEdite !== null;
-    const response = await fetch(
+    const response = await apiFetch(
       edition
         ? `${API_URL}/api/utilisateurs/${utilisateurEdite.id}`
         : `${API_URL}/api/utilisateurs`,
@@ -177,7 +179,7 @@ export default function UtilisateursPage() {
       return;
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/api/utilisateurs/${element.id}`,
       {
         method: "DELETE",

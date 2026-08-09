@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
@@ -28,7 +30,7 @@ export default function EtiquetteLotPage() {
   const [erreur, setErreur] = useState("");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/lots-beton/${params.id}`)
+    apiFetch(`${API_URL}/api/lots-beton/${params.id}`)
       .then(async (response) => {
         const data = await response.json().catch(() => null);
         if (!response.ok) throw new Error(data?.detail ?? "Chargement impossible.");

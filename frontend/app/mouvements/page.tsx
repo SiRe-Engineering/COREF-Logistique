@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
@@ -154,11 +156,11 @@ export default function MouvementsPage() {
         lotsResponse,
         affairesResponse,
       ] = await Promise.all([
-        fetch(`${API_URL}/api/mouvements`),
-        fetch(`${API_URL}/api/articles`),
-        fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-        fetch(`${API_URL}/api/lots-beton`),
-        fetch(`${API_URL}/api/affaires`),
+        apiFetch(`${API_URL}/api/mouvements`),
+        apiFetch(`${API_URL}/api/articles`),
+        apiFetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+        apiFetch(`${API_URL}/api/lots-beton`),
+        apiFetch(`${API_URL}/api/affaires`),
       ]);
 
       if (
@@ -254,7 +256,7 @@ export default function MouvementsPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/mouvements`, {
+      const response = await apiFetch(`${API_URL}/api/mouvements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -332,7 +334,7 @@ export default function MouvementsPage() {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/mouvements/${mouvement.id}`,
         {
           method: "DELETE",

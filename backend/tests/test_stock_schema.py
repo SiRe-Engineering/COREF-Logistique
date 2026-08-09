@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 
@@ -8,18 +10,19 @@ def test_stock_valide() -> None:
     stock = StockSet(
         article_id=1,
         emplacement_id=1,
-        quantite_physique=100,
-        quantite_reservee=20,
+        quantite_physique=Decimal("100"),
     )
-    assert stock.quantite_physique == 100
-    assert stock.quantite_reservee == 20
+
+    assert stock.article_id == 1
+    assert stock.emplacement_id == 1
+    assert stock.quantite_physique == Decimal("100")
+    assert not hasattr(stock, "quantite_reservee")
 
 
-def test_reserve_superieure_au_physique_refusee() -> None:
+def test_quantite_physique_negative_refusee() -> None:
     with pytest.raises(ValidationError):
         StockSet(
             article_id=1,
             emplacement_id=1,
-            quantite_physique=10,
-            quantite_reservee=12,
+            quantite_physique=Decimal("-1"),
         )

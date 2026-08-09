@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
-from app.dependencies import exiger_roles
+from app.dependencies import exiger_roles, utilisateur_courant
 from app.models.article import Article
 from app.models.emplacement import Emplacement
 from app.models.famille import Famille
@@ -17,7 +17,7 @@ from app.models.utilisateur import Utilisateur
 from app.schemas.stock import StockRead, StockResume, StockSet
 from app.services.valorisation import actualiser_snapshot_mensuel
 
-router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
+router = APIRouter(prefix="/api/stocks", tags=["Stocks"], dependencies=[Depends(utilisateur_courant)])
 
 
 def article_est_beton(db: Session, article: Article) -> bool:

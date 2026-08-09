@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import Link from "next/link";
 import {
   Barcode,
@@ -88,7 +90,7 @@ export default function MagasinPage() {
 
     setChargement(true);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/magasin/scan/${encodeURIComponent(valeur)}`,
         { headers: entetesAuthentifiees() }
       );

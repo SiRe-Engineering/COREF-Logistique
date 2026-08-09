@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
@@ -109,7 +111,7 @@ export default function AffairesPage() {
 
   async function charger() {
     try {
-      const response = await fetch(`${API_URL}/api/affaires`);
+      const response = await apiFetch(`${API_URL}/api/affaires`);
       if (!response.ok) throw new Error();
       setAffaires(await response.json());
     } catch {
@@ -166,7 +168,7 @@ export default function AffairesPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/affaires`, {
+      const response = await apiFetch(`${API_URL}/api/affaires`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -222,7 +224,7 @@ export default function AffairesPage() {
     setEnregistrement(true);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/affaires/${affaireSelectionnee.id}`,
         {
           method: "PATCH",
@@ -288,7 +290,7 @@ export default function AffairesPage() {
     ) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/affaires/${affaire.id}`, {
+      const response = await apiFetch(`${API_URL}/api/affaires/${affaire.id}`, {
         method: "DELETE",
         headers: entetesAuthentifiees(),
       });

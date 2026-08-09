@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
@@ -25,7 +27,7 @@ export default function DocumentPreparation() {
   const params=useParams<{id:string}>();
   const [p,setP]=useState<Preparation|null>(null);
   const [erreur,setErreur]=useState("");
-  useEffect(()=>{fetch(`${API_URL}/api/preparations/${params.id}`)
+  useEffect(()=>{apiFetch(`${API_URL}/api/preparations/${params.id}`)
     .then(async r=>{const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.detail??"Chargement impossible.");setP(d)})
     .catch(e=>setErreur(e instanceof Error?e.message:"Chargement impossible."));},[params.id]);
   if(erreur)return <main className={styles.message}>{erreur}</main>;

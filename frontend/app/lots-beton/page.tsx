@@ -1,5 +1,9 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
+import Link from "next/link";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -114,8 +118,8 @@ export default function LotsBetonPage() {
   async function charger() {
     try {
       const [lotsResponse, articlesResponse] = await Promise.all([
-        fetch(`${API_URL}/api/lots-beton`),
-        fetch(`${API_URL}/api/articles`),
+        apiFetch(`${API_URL}/api/lots-beton`),
+        apiFetch(`${API_URL}/api/articles`),
       ]);
 
       if (!lotsResponse.ok || !articlesResponse.ok) {
@@ -173,7 +177,7 @@ export default function LotsBetonPage() {
     event.preventDefault();
 
     try {
-      const response = await fetch(`${API_URL}/api/lots-beton`, {
+      const response = await apiFetch(`${API_URL}/api/lots-beton`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -235,7 +239,7 @@ export default function LotsBetonPage() {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/lots-beton/${lot.id}`,
         {
           method: "DELETE",
@@ -285,13 +289,13 @@ export default function LotsBetonPage() {
           </p>
         </div>
 
-        <Button
+        <div className={styles.headerActions}><Link href="/documents-fournisseurs">Documents fournisseurs</Link><Button
           variant="secondary"
           onClick={() => setModalOuverte(true)}
         >
           <Plus size={18} />
           Nouveau lot
-        </Button>
+        </Button></div>
       </div>
 
       <section className={styles.summary}>
@@ -494,8 +498,7 @@ export default function LotsBetonPage() {
                 <span className="eyebrow">Traçabilité fournisseur</span>
                 <h2>Créer un lot béton</h2>
                 <p>
-                  Le certificat et la FDS sont référencés maintenant.
-                  Le téléversement des fichiers sera ajouté au lot suivant.
+                  Créez le lot puis déposez le certificat fournisseur et la FDS depuis le module Documents fournisseurs.
                 </p>
               </div>
             </div>

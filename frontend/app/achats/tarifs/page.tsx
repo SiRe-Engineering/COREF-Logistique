@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BadgeEuro,
@@ -93,9 +95,9 @@ export default function TarifsFournisseursPage() {
     const headers = entetesAuthentifiees();
     try {
       const [a, f, l] = await Promise.all([
-        fetch(`${API}/api/articles`, { headers }),
-        fetch(`${API}/api/achats/fournisseurs`, { headers }),
-        fetch(`${API}/api/achats/articles-fournisseurs`, { headers }),
+        apiFetch(`${API}/api/articles`, { headers }),
+        apiFetch(`${API}/api/achats/fournisseurs`, { headers }),
+        apiFetch(`${API}/api/achats/articles-fournisseurs`, { headers }),
       ]);
       if (!a.ok || !f.ok || !l.ok) throw new Error();
       setArticles(await a.json());
@@ -184,7 +186,7 @@ export default function TarifsFournisseursPage() {
       ? `${API}/api/achats/articles-fournisseurs/${edition.id}`
       : `${API}/api/achats/articles-fournisseurs`;
 
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: edition ? "PATCH" : "POST",
       headers: entetesAuthentifiees({
         "Content-Type": "application/json",
@@ -230,7 +232,7 @@ export default function TarifsFournisseursPage() {
       return;
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
       `${API}/api/achats/articles-fournisseurs/${lien.id}`,
       {
         method: "DELETE",
@@ -248,7 +250,7 @@ export default function TarifsFournisseursPage() {
   }
 
   async function voirHistorique(lien: Lien) {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API}/api/achats/articles-fournisseurs/${lien.id}/historique`,
       { headers: entetesAuthentifiees() }
     );

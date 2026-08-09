@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
+from app.dependencies import utilisateur_courant
 from app.models.famille import Famille, SousFamille
 from app.schemas.famille import (
     FamilleCreate,
@@ -14,7 +15,7 @@ from app.schemas.famille import (
     SousFamilleUpdate,
 )
 
-router = APIRouter(prefix="/api", tags=["Familles"])
+router = APIRouter(prefix="/api", tags=["Familles"], dependencies=[Depends(utilisateur_courant)])
 
 
 def lever_conflit(db: Session) -> None:

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ChevronRight, MapPin, Plus, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -42,7 +44,7 @@ export default function EmplacementsPage() {
 
   async function charger() {
     try {
-      const response = await fetch(`${API_URL}/api/emplacements`);
+      const response = await apiFetch(`${API_URL}/api/emplacements`);
       if (!response.ok) throw new Error();
       setEmplacements(await response.json());
     } catch {
@@ -66,7 +68,7 @@ export default function EmplacementsPage() {
     event.preventDefault();
 
     try {
-      const response = await fetch(`${API_URL}/api/emplacements`, {
+      const response = await apiFetch(`${API_URL}/api/emplacements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

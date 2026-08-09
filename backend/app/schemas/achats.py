@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 StatutCommande = Literal["BROUILLON","VALIDEE","ENVOYEE","PARTIELLEMENT_RECUE","RECUE","ANNULEE"]
 
@@ -79,6 +79,7 @@ class LigneCommandeRead(BaseModel):
     id:int; article_id:int; besoin_reapprovisionnement_id:int|None
     reference_fournisseur:str|None
     quantite_commandee:Decimal; quantite_recue:Decimal; prix_unitaire_ht:Decimal
+    date_premiere_reception:datetime|None; date_derniere_reception:datetime|None
     article:ArticleSimple
 
 class CommandeRead(BaseModel):
@@ -86,6 +87,7 @@ class CommandeRead(BaseModel):
     id:int; reference:str; fournisseur_id:int; statut:str
     reference_fournisseur:str|None; date_commande:datetime|None
     date_livraison_prevue:date|None; commentaire:str|None; cree_par:str|None
+    date_premiere_reception:datetime|None; date_reception_finale:datetime|None
     date_creation:datetime; date_modification:datetime
     fournisseur:FournisseurRead
     lignes:list[LigneCommandeRead]
@@ -96,6 +98,31 @@ class ReceptionLigneCreate(BaseModel):
     lot_id:int|None=None
     prix_unitaire_ht:Decimal|None=Field(default=None,ge=0)
     commentaire:str|None=None
+    bon_livraison_reference:str|None=Field(default=None,max_length=120)
+    conformite_visuelle:Literal["CONFORME","RESERVE","NON_CONFORME"]="CONFORME"
+    reserve_commentaire:str|None=None
+    commentaire_qualite:str|None=None
+    bon_livraison_nom_fichier:str|None=None
+    bon_livraison_type_mime:str|None=None
+    bon_livraison_contenu_base64:str|None=None
+
+    @model_validator(mode="after")
+    def valider_controle_qualite(self):
+        if self.conformite_visuelle != "CONFORME" and not (
+            self.reserve_commentaire and self.reserve_commentaire.strip()
+        ):
+            raise ValueError(
+                "Un commentaire de réserve est obligatoire si la réception "
+                "n'est pas conforme."
+            )
+        return self
+
+
+class ReceptionLigneResult(BaseModel):
+    commande: CommandeRead
+    reception_id:int
+    statut_qualite:str
+    avertissements:list[str]=[]
 
 
 

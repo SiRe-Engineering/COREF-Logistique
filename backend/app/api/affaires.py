@@ -4,14 +4,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.dependencies import exiger_roles
+from app.dependencies import exiger_roles, utilisateur_courant
 from app.models.affaire import Affaire
 from app.models.mouvement import MouvementStock
 from app.models.preparation import Preparation
 from app.models.utilisateur import Utilisateur
 from app.schemas.affaire import AffaireCreate, AffaireRead, AffaireUpdate
 
-router = APIRouter(prefix="/api/affaires", tags=["Affaires"])
+router = APIRouter(prefix="/api/affaires", tags=["Affaires"], dependencies=[Depends(utilisateur_courant)])
 
 
 @router.get("", response_model=list[AffaireRead])

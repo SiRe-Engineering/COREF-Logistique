@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
@@ -16,7 +18,7 @@ type Inventaire={reference:string;nom:string;statut:string;operateur:string|null
 
 export default function ImpressionInventaire(){
  const params=useParams<{id:string}>(); const [data,setData]=useState<Inventaire|null>(null); const [erreur,setErreur]=useState("");
- useEffect(()=>{fetch(`${API_URL}/api/inventaires/${params.id}`).then(async r=>{const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.detail??"Chargement impossible.");setData(d)}).catch(e=>setErreur(e instanceof Error?e.message:"Chargement impossible."));},[params.id]);
+ useEffect(()=>{apiFetch(`${API_URL}/api/inventaires/${params.id}`).then(async r=>{const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.detail??"Chargement impossible.");setData(d)}).catch(e=>setErreur(e instanceof Error?e.message:"Chargement impossible."));},[params.id]);
  if(erreur)return <main className={styles.message}>{erreur}</main>; if(!data)return <main className={styles.message}>Chargement…</main>;
  return <main className={styles.page}>
   <div className={styles.actions}><Button onClick={()=>window.print()}><Printer size={16}/>Imprimer / PDF</Button></div>

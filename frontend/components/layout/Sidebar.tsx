@@ -8,7 +8,6 @@ import {
   BriefcaseBusiness,
   ClipboardCheck,
   ClipboardList,
-  Construction,
   FlaskConical,
   Gauge,
   Hammer,
@@ -19,9 +18,6 @@ import {
   ShoppingCart,
   Building2,
   ChartNoAxesCombined,
-  Settings,
-  Shapes,
-  Truck,
   Users,
   Warehouse,
 } from "lucide-react";
@@ -40,7 +36,6 @@ export function Sidebar() {
     { href: "/", label: "Tableau de bord", icon: Gauge },
     { href: "/alertes", label: "Alertes", icon: BellRing },
     { href: "/articles", label: "Articles", icon: PackageSearch },
-    { href: "#", label: "Familles", icon: Shapes, disabled: true },
     { href: "/stocks", label: "Stocks", icon: Warehouse },
     { href: "/reapprovisionnement", label: "Réapprovisionnement", icon: ShoppingCart },
     { href: "/achats", label: "Fournisseurs / Achats", icon: Building2 },
@@ -53,8 +48,6 @@ export function Sidebar() {
     { href: "/affaires", label: "Affaires", icon: BriefcaseBusiness },
     { href: "/lots-beton", label: "Lots béton", icon: FlaskConical },
     { href: "/materiels", label: "Matériels", icon: Hammer },
-    { href: "#", label: "Moules", icon: Construction, disabled: true },
-    { href: "#", label: "Véhicules", icon: Truck, disabled: true },
     { href: "/emplacements", label: "Emplacements", icon: MapPin },
     ...(peutGererUtilisateurs
       ? [
@@ -62,16 +55,6 @@ export function Sidebar() {
             href: "/administration/utilisateurs",
             label: "Utilisateurs",
             icon: Users,
-          },
-        ]
-      : []),
-    ...(utilisateur.role === "ADMINISTRATEUR_TECHNIQUE"
-      ? [
-          {
-            href: "#",
-            label: "Système",
-            icon: Settings,
-            disabled: true,
           },
         ]
       : []),

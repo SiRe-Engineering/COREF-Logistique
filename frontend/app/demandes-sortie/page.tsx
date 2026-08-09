@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ClipboardList, Plus, Search, XCircle } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -88,11 +90,11 @@ export default function DemandesSortiePage() {
 
   async function charger() {
     const responses = await Promise.all([
-      fetch(`${API_URL}/api/demandes-sortie`, { headers: entetesAuthentifiees() }),
-      fetch(`${API_URL}/api/articles`),
-      fetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
-      fetch(`${API_URL}/api/affaires`),
-      fetch(`${API_URL}/api/lots-beton`),
+      apiFetch(`${API_URL}/api/demandes-sortie`, { headers: entetesAuthentifiees() }),
+      apiFetch(`${API_URL}/api/articles`),
+      apiFetch(`${API_URL}/api/emplacements?racines_uniquement=false`),
+      apiFetch(`${API_URL}/api/affaires`),
+      apiFetch(`${API_URL}/api/lots-beton`),
     ]);
     if (responses.some((response) => !response.ok)) {
       setToast({ type: "error", message: "Impossible de charger les demandes." });
@@ -125,7 +127,7 @@ export default function DemandesSortiePage() {
 
   async function creer(event: FormEvent) {
     event.preventDefault();
-    const response = await fetch(`${API_URL}/api/demandes-sortie`, {
+    const response = await apiFetch(`${API_URL}/api/demandes-sortie`, {
       method: "POST",
       headers: entetesAuthentifiees({ "Content-Type": "application/json" }),
       body: JSON.stringify({
@@ -158,7 +160,7 @@ export default function DemandesSortiePage() {
 
   async function approuver() {
     if (!selection) return;
-    const response = await fetch(`${API_URL}/api/demandes-sortie/${selection.id}/approuver`, {
+    const response = await apiFetch(`${API_URL}/api/demandes-sortie/${selection.id}/approuver`, {
       method: "POST",
       headers: entetesAuthentifiees(),
     });
@@ -175,7 +177,7 @@ export default function DemandesSortiePage() {
     if (!selection) return;
     const motif = window.prompt("Motif du refus :");
     if (!motif?.trim()) return;
-    const response = await fetch(`${API_URL}/api/demandes-sortie/${selection.id}/refuser`, {
+    const response = await apiFetch(`${API_URL}/api/demandes-sortie/${selection.id}/refuser`, {
       method: "POST",
       headers: entetesAuthentifiees({ "Content-Type": "application/json" }),
       body: JSON.stringify({ motif_refus: motif.trim() }),

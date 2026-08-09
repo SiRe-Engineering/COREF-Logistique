@@ -3,7 +3,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
-from app.dependencies import exiger_roles
+from app.dependencies import exiger_roles, utilisateur_courant
 from app.models.article import Article
 from app.models.mouvement import MouvementStock
 from app.models.utilisateur import Utilisateur
@@ -17,6 +17,7 @@ from app.services.mouvements import annuler_mouvement, executer_mouvement
 router = APIRouter(
     prefix="/api/mouvements",
     tags=["Mouvements"],
+    dependencies=[Depends(utilisateur_courant)],
 )
 
 

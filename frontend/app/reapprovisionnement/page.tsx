@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -68,10 +70,10 @@ export default function ReapprovisionnementPage(){
     try{
       const headers=entetesAuthentifiees();
       const [s,b,e,l]=await Promise.all([
-        fetch(`${API_URL}/api/reapprovisionnement/suggestions`,{headers}),
-        fetch(`${API_URL}/api/reapprovisionnement/besoins`,{headers}),
-        fetch(`${API_URL}/api/emplacements`,{headers}),
-        fetch(`${API_URL}/api/lots-beton`,{headers}),
+        apiFetch(`${API_URL}/api/reapprovisionnement/suggestions`,{headers}),
+        apiFetch(`${API_URL}/api/reapprovisionnement/besoins`,{headers}),
+        apiFetch(`${API_URL}/api/emplacements`,{headers}),
+        apiFetch(`${API_URL}/api/lots-beton`,{headers}),
       ]);
       if(!s.ok||!b.ok||!e.ok||!l.ok) throw new Error();
       setSuggestions(await s.json()); setBesoins(await b.json());
@@ -92,7 +94,7 @@ export default function ReapprovisionnementPage(){
   },[besoins,recherche,filtre]);
 
   async function creer(s:Suggestion){
-    const r=await fetch(`${API_URL}/api/reapprovisionnement/besoins`,{
+    const r=await apiFetch(`${API_URL}/api/reapprovisionnement/besoins`,{
       method:"POST",headers:entetesAuthentifiees({"Content-Type":"application/json"}),
       body:JSON.stringify({
         article_id:s.article.id,
@@ -113,7 +115,7 @@ export default function ReapprovisionnementPage(){
   }
   async function enregistrer(e:FormEvent){
     e.preventDefault(); if(!edition)return;
-    const r=await fetch(`${API_URL}/api/reapprovisionnement/besoins/${edition.id}`,{
+    const r=await apiFetch(`${API_URL}/api/reapprovisionnement/besoins/${edition.id}`,{
       method:"PATCH",headers:entetesAuthentifiees({"Content-Type":"application/json"}),
       body:JSON.stringify({
         quantite_demandee:n(form.quantite_demandee),quantite_commandee:n(form.quantite_commandee),
@@ -134,7 +136,7 @@ export default function ReapprovisionnementPage(){
   }
   async function receptionner(e:FormEvent){
     e.preventDefault();if(!reception)return;
-    const r=await fetch(`${API_URL}/api/reapprovisionnement/besoins/${reception.id}/reception`,{
+    const r=await apiFetch(`${API_URL}/api/reapprovisionnement/besoins/${reception.id}/reception`,{
       method:"POST",headers:entetesAuthentifiees({"Content-Type":"application/json"}),
       body:JSON.stringify({
         quantite:n(receptionForm.quantite),emplacement_destination_id:Number(receptionForm.emplacement_destination_id),
