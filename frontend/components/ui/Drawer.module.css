@@ -1,0 +1,132 @@
+.layer {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  cursor: default;
+  border: 0;
+  background: rgba(16, 24, 40, .46);
+  backdrop-filter: blur(1px);
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface, #fff);
+  box-shadow: -20px 0 60px rgba(16, 24, 40, .22);
+  animation: enter .18s ease-out;
+}
+
+.medium {
+  width: min(720px, 55vw);
+}
+
+.wide {
+  width: clamp(820px, 68vw, 1380px);
+}
+
+.workspace {
+  width: clamp(980px, 82vw, 1680px);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 94px;
+  padding: 24px 30px 20px;
+  border-bottom: 1px solid var(--border, #dfe4ea);
+  background: var(--surface, #fff);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+}
+
+.closeButton {
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid var(--border, #dfe4ea);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text, #182230);
+}
+
+.closeButton:hover {
+  background: var(--surface-muted, #f8fafc);
+}
+
+.closeButton:focus-visible {
+  outline: 3px solid rgba(180, 35, 24, .25);
+  outline-offset: 2px;
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 30px 40px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 30px;
+  border-top: 1px solid var(--border, #dfe4ea);
+  background: rgba(255, 255, 255, .97);
+}
+
+@keyframes enter {
+  from {
+    opacity: .7;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 1200px) {
+  .medium,
+  .wide,
+  .workspace {
+    width: min(86vw, 1100px);
+  }
+}
+
+@media (max-width: 780px) {
+  .medium,
+  .wide,
+  .workspace {
+    width: 100%;
+  }
+
+  .header {
+    min-height: 78px;
+    padding: 18px 18px 14px;
+  }
+
+  .content {
+    padding: 20px 18px 32px;
+  }
+
+  .footer {
+    padding: 14px 18px;
+  }
+}

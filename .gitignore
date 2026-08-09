@@ -1,12 +1,46 @@
 .env
 .env.local
+
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
+
 node_modules/
 .next/
 dist/
 coverage/
+
 .DS_Store
 .vscode/
+
+
+# --- COREF Logistique local diagnostics / generated audit files ---
+AB1-PYTEST-COLLECT.txt
+AB1-PYTEST-RESULTATS.txt
+AB1-2-PYTEST-RESULTATS.txt
+AB1-3-PYTEST-RESULTATS.txt
+*.log
+
+# Local Python / Node caches
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+backend/.pytest_cache/
+frontend/.next/
+frontend/node_modules/
+
+# Local environment / secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary archives / backups
+*.7z
+*.bak
+*.tmp

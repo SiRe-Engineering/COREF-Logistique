@@ -1,0 +1,31 @@
+.filters {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) 220px;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.filters select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+.detail { display: grid; gap: 16px; }
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+.detailHeader p { color: var(--muted); }
+.refusal {
+  padding: 12px;
+  border-radius: 9px;
+  background: #fef3f2;
+  color: #b42318;
+}
+.refusal p { margin: 6px 0 0; }
+@media (max-width: 700px) {
+  .filters { grid-template-columns: 1fr; }
+}

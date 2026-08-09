@@ -1,0 +1,50 @@
+.stockDetail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.stockDetail div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.stockDetail span,
+.reservations span,
+.reservations small {
+  color: var(--muted);
+  font-size: .74rem;
+}
+
+.reservations {
+  display: grid;
+  gap: 10px;
+}
+
+.reservations article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.reservations article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.reservations small {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 620px) {
+  .stockDetail {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,129 @@
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summary article {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 104px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.summary article > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.summary article div {
+  display: grid;
+  gap: 5px;
+}
+
+.summary span {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+}
+
+.summary strong {
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 240px;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 750;
+}
+
+.typeentree,
+.typeretour,
+.typeajustementpositif {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.typesortie,
+.typeajustementnegatif {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.typetransfert {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.articleCell {
+  display: grid;
+  gap: 4px;
+}
+
+.articleCell small {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+}
+
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 210px;
+}
+
+.flow span:nth-child(2) {
+  color: var(--muted);
+}
+
+.textarea {
+  width: 100%;
+  padding: 10px 11px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #98a2b3;
+  box-shadow: 0 0 0 3px rgba(152, 162, 179, .16);
+}
+
+@media (max-width: 1050px) {
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .summary,
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}

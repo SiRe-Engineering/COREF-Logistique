@@ -1,0 +1,271 @@
+.page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px;
+  color: #182230;
+  background: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.screenActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 3px solid #b42318;
+}
+
+.brand {
+  display: grid;
+}
+
+.brand strong {
+  color: #b42318;
+  font-size: 1.7rem;
+  letter-spacing: .05em;
+}
+
+.brand span {
+  font-size: .72rem;
+  letter-spacing: .28em;
+}
+
+.documentTitle {
+  text-align: center;
+}
+
+.documentTitle span {
+  color: #b42318;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.documentTitle h1 {
+  margin: 6px 0 2px;
+  font-size: 1.8rem;
+}
+
+.documentTitle p {
+  margin: 0;
+  color: #667085;
+  font-size: .78rem;
+}
+
+.printMeta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: .74rem;
+}
+
+.printMeta span {
+  color: #667085;
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 18px;
+  border: 1px solid #d0d5dd;
+  background: #d0d5dd;
+}
+
+.identity > div {
+  display: grid;
+  min-height: 72px;
+  gap: 3px;
+  padding: 11px;
+  background: white;
+}
+
+.identity span,
+.summary span,
+.validation span {
+  color: #667085;
+  font-size: .66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.identity small,
+.table small {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-size: .68rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 14px 0;
+  border: 1px solid #d0d5dd;
+}
+
+.summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-right: 1px solid #d0d5dd;
+}
+
+.summary > div:last-child {
+  border-right: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .7rem;
+}
+
+.table th,
+.table td {
+  padding: 8px 7px;
+  border: 1px solid #d0d5dd;
+  vertical-align: top;
+  text-align: left;
+}
+
+.table th {
+  background: #f2f4f7;
+  color: #475467;
+  font-size: .62rem;
+  text-transform: uppercase;
+}
+
+.checkbox {
+  width: 24px;
+  text-align: center !important;
+  font-size: 1rem;
+}
+
+.number {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 999px;
+  font-size: .6rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.success {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.warning {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.danger {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.neutral {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.notes {
+  margin-top: 16px;
+}
+
+.notes h2 {
+  margin: 0 0 8px;
+  font-size: .85rem;
+}
+
+.notes p,
+.notes > div {
+  min-height: 25px;
+  margin: 0;
+  border-bottom: 1px solid #98a2b3;
+}
+
+.validation {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr .8fr 1.5fr;
+  gap: 1px;
+  margin-top: 20px;
+  border: 1px solid #d0d5dd;
+  background: #d0d5dd;
+}
+
+.validation > div {
+  display: grid;
+  min-height: 70px;
+  gap: 12px;
+  padding: 10px;
+  background: white;
+}
+
+.signature strong {
+  display: block;
+  min-height: 35px;
+}
+
+.message {
+  padding: 40px;
+}
+
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  .page {
+    max-width: none;
+    padding: 0;
+    background: white;
+  }
+
+  .screenActions {
+    display: none;
+  }
+
+  .table {
+    font-size: 8pt;
+  }
+
+  .table tr {
+    break-inside: avoid;
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 16px;
+    overflow-x: auto;
+  }
+
+  .header,
+  .identity,
+  .summary,
+  .validation {
+    min-width: 900px;
+  }
+
+  .table {
+    min-width: 1100px;
+  }
+}

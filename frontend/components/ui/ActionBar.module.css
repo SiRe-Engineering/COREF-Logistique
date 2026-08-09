@@ -1,0 +1,52 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 15px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.sticky {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  margin: 24px -30px -40px;
+  padding: 14px 30px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 -8px 20px rgba(16, 24, 40, .05);
+  backdrop-filter: blur(6px);
+}
+
+.primary,
+.secondary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.primary {
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primary,
+  .secondary {
+    justify-content: stretch;
+  }
+
+  .sticky {
+    margin-right: -18px;
+    margin-bottom: -32px;
+    margin-left: -18px;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+}
